@@ -94,6 +94,14 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     // 过滤操作互斥锁，确保线程安全
     private val filterMutex = Mutex()
     
+    // 批量选择状态
+    private val _selectedAssetIds = mutableStateListOf<String>()
+    val selectedAssetIds: List<String> = _selectedAssetIds
+    
+    // 选择模式状态
+    private val _isSelectionMode = MutableStateFlow(false)
+    val isSelectionMode: StateFlow<Boolean> = _isSelectionMode.asStateFlow()
+    
     /**
      * 设置孤立风险等级筛选
      */
@@ -116,7 +124,8 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                 val hasPermission = context.contentResolver.persistedUriPermissions
                     .any { it.uri == uri && it.isReadPermission }
                 if (!hasPermission) {
-                    _uiState.value = UiState.Error("权限已过期，请重新选择项目文件夹")
+                    _scanProgress.value = null
+                    _uiState.value = UiState.Error("存储权限已过期，请重新选择项目文件夹", ErrorReason.PERMISSION_DENIED)
                     return@launch
                 }
                 
@@ -189,9 +198,12 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             } catch (e: kotlinx.coroutines.CancellationException) {
                 _scanProgress.value = null
                 _uiState.value = UiState.Idle
+            } catch (e: java.io.IOException) {
+                _scanProgress.value = null
+                _uiState.value = UiState.Error("文件读取失败: ${e.message}", ErrorReason.IO_ERROR)
             } catch (e: Exception) {
                 _scanProgress.value = null
-                _uiState.value = UiState.Error(e.message ?: "扫描失败")
+                _uiState.value = UiState.Error(e.message ?: "扫描失败", ErrorReason.UNKNOWN)
             }
         }
     }
@@ -348,6 +360,106 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     fun shareReport() = _currentReport.value?.let { 
         reportGenerator.shareReport(it) 
     }
+    
+    /**
+     * 切换选择模式
+     */
+    fun toggleSelectionMode() {
+        if (_isSelectionMode.value) {
+            // 退出选择模式时清空选择
+            clearSelection()
+        }
+        _isSelectionMode.value = !_isSelectionMode.value
+    }
+    
+    /**
+     * 退出选择模式
+     */
+    fun exitSelectionMode() {
+        clearSelection()
+        _isSelectionMode.value = false
+    }
+    
+    /**
+     * 切换资源选择状态
+     */
+    fun toggleAssetSelection(assetId: String) {
+        if (_selectedAssetIds.contains(assetId)) {
+            _selectedAssetIds.remove(assetId)
+        } else {
+            _selectedAssetIds.add(assetId)
+        }
+    }
+    
+    /**
+     * 清空所有选择
+     */
+    fun clearSelection() {
+        _selectedAssetIds.clear()
+    }
+    
+    /**
+     * 全选当前显示的资源
+     */
+    fun selectAll() {
+        _selectedAssetIds.clear()
+        _selectedAssetIds.addAll(_filteredAssets.value.map { it.id })
+    }
+    
+    /**
+     * 获取选中的资源对象列表
+     */
+    fun getSelectedAssets(): List<UEAsset> {
+        return _filteredAssets.value.filter { _selectedAssetIds.contains(it.id) }
+    }
+    
+    /**
+     * 导出选中资源列表为 Markdown 格式
+     */
+    fun exportSelectedAssets(): String {
+        val selectedAssets = getSelectedAssets()
+        if (selectedAssets.isEmpty()) {
+            return "# 选中资源列表\n\n未选择任何资源"
+        }
+        
+        val totalSize = selectedAssets.sumOf { it.size }
+        val builder = StringBuilder()
+        builder.appendLine("# 选中资源列表")
+        builder.appendLine()
+        builder.appendLine("**总计**: ${selectedAssets.size} 个资源")
+        builder.appendLine("**总大小**: ${formatFileSize(totalSize)}")
+        builder.appendLine()
+        builder.appendLine("---")
+        builder.appendLine()
+        builder.appendLine("| 名称 | 类型 | 大小 | 路径 |")
+        builder.appendLine("|------|------|------|------|")
+        
+        selectedAssets.sortedBy { it.name.lowercase() }.forEach { asset ->
+            val name = asset.name
+            val type = asset.type.displayName
+            val size = formatFileSize(asset.size)
+            val path = asset.path
+            builder.appendLine("| $name | $type | $size | $path |")
+        }
+        
+        builder.appendLine()
+        builder.appendLine("---")
+        builder.appendLine("* 由 UE5 Asset Analyzer 生成 *")
+        
+        return builder.toString()
+    }
+    
+    /**
+     * 格式化文件大小
+     */
+    private fun formatFileSize(bytes: Long): String {
+        return when {
+            bytes < 1024 -> "$bytes B"
+            bytes < 1024 * 1024 -> "${bytes / 1024} KB"
+            bytes < 1024 * 1024 * 1024 -> String.format("%.1f MB", bytes / (1024.0 * 1024))
+            else -> String.format("%.1f GB", bytes / (1024.0 * 1024 * 1024))
+        }
+    }
 }
 
 /**
@@ -357,7 +469,18 @@ sealed class UiState {
     object Idle : UiState()
     object Scanning : UiState()
     data class Success(val result: ScanResult) : UiState()
-    data class Error(val message: String) : UiState()
+    data class Error(
+        val message: String,
+        val reason: ErrorReason = ErrorReason.UNKNOWN
+    ) : UiState()
+}
+
+enum class ErrorReason {
+    PERMISSION_DENIED,   // SAF 权限过期
+    PROJECT_EMPTY,       // 项目没有 .uasset 文件
+    PARSE_FAILED,        // 解析失败
+    IO_ERROR,           // IO 错误
+    UNKNOWN             // 未知错误
 }
 
 /**

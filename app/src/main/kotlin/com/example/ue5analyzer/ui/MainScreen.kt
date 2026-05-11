@@ -117,11 +117,8 @@ fun MainScreen(
                     viewModel = viewModel,
                     onBackClick = { navController.popBackStack() },
                     onAssetClick = { clickedAssetId ->
-                        // 限制导航栈深度，使用 singleTop 模式避免重复
-                        navController.navigate(Screen.AssetDetail.createRoute(clickedAssetId)) {
-                            // 使用 singleTop 模式，同一资源不重复入栈
-                            launchSingleTop = true
-                        }
+                        // 允许深度导航，每次进入详情都加入 back stack
+                        navController.navigate(Screen.AssetDetail.createRoute(clickedAssetId))
                     }
                 )
             }

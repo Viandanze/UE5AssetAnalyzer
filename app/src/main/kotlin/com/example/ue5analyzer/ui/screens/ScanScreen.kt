@@ -211,47 +211,115 @@ fun LoadingState(
     modifier: Modifier = Modifier
 ) {
     Column(
-        modifier = modifier.fillMaxSize(),
+        modifier = modifier
+            .fillMaxSize()
+            .padding(32.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center
     ) {
-        CircularProgressIndicator()
-        Spacer(modifier = Modifier.height(16.dp))
-        Text("正在扫描项目...", style = MaterialTheme.typography.bodyMedium)
-        
-        if (progress != null) {
-            Spacer(modifier = Modifier.height(8.dp))
-            if (progress.totalCount > 0) {
-                // 显示进度百分比
-                val percentage = (progress.scannedCount * PERCENTAGE_MAX / progress.totalCount).coerceIn(0, PERCENTAGE_MAX)
-                Text(
-                    text = "已扫描 ${progress.scannedCount} / ${progress.totalCount} ($percentage%)",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-            } else {
-                Text(
-                    text = "已扫描 ${progress.scannedCount} 个资源",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-            }
-            if (progress.currentFile.isNotEmpty()) {
-                Text(
-                    text = progress.currentFile,
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                    modifier = Modifier.padding(horizontal = 32.dp)
-                )
-            }
-        }
+        // 扫描图标
+        Icon(
+            imageVector = Icons.Default.FolderOpen,
+            contentDescription = null,
+            modifier = Modifier.size(64.dp),
+            tint = MaterialTheme.colorScheme.primary
+        )
         
         Spacer(modifier = Modifier.height(24.dp))
         
+        Text(
+            text = "正在扫描项目...",
+            style = MaterialTheme.typography.titleMedium,
+            color = MaterialTheme.colorScheme.onSurface
+        )
+        
+        if (progress != null) {
+            Spacer(modifier = Modifier.height(24.dp))
+            
+            // 线性进度条
+            if (progress.totalCount > 0) {
+                val progressFloat = (progress.scannedCount.toFloat() / progress.totalCount.toFloat()).coerceIn(0f, 1f)
+                LinearProgressIndicator(
+                    progress = { progressFloat },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(8.dp),
+                    color = MaterialTheme.colorScheme.primary,
+                    trackColor = MaterialTheme.colorScheme.primaryContainer,
+                )
+                
+                Spacer(modifier = Modifier.height(12.dp))
+                
+                // 进度百分比文字
+                val percentage = ((progress.scannedCount.toFloat() / progress.totalCount.toFloat()) * 100).toInt()
+                Text(
+                    text = "正在扫描: ${progress.scannedCount} / ${progress.totalCount} 文件 ($percentage%)",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            } else {
+                // 无总数时显示不确定进度条
+                CircularProgressIndicator(
+                    modifier = Modifier.size(48.dp),
+                    strokeWidth = 4.dp
+                )
+                
+                Spacer(modifier = Modifier.height(12.dp))
+                
+                Text(
+                    text = "已扫描 ${progress.scannedCount} 个资源",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+            
+            // 当前文件名（滚动显示）
+            if (progress.currentFile.isNotEmpty()) {
+                Spacer(modifier = Modifier.height(16.dp))
+                
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = CardDefaults.cardColors(
+                        containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
+                    )
+                ) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(12.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Description,
+                            contentDescription = null,
+                            modifier = Modifier.size(20.dp),
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text(
+                            text = progress.currentFile,
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                            modifier = Modifier
+                                .weight(1f)
+                                .horizontalScroll(rememberScrollState())
+                        )
+                    }
+                }
+            }
+        }
+        
+        Spacer(modifier = Modifier.height(32.dp))
+        
         // 取消按钮
-        OutlinedButton(onClick = onCancel) {
+        OutlinedButton(
+            onClick = onCancel,
+            colors = ButtonDefaults.outlinedButtonColors(
+                contentColor = MaterialTheme.colorScheme.error
+            )
+        ) {
             Icon(Icons.Default.Close, contentDescription = null)
             Spacer(modifier = Modifier.width(8.dp))
             Text("取消扫描")

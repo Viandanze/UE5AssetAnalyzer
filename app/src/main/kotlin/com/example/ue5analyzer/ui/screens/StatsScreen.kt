@@ -61,14 +61,20 @@ fun StatsScreen(
                         Icon(
                             imageVector = Icons.Default.Analytics,
                             contentDescription = null,
-                            modifier = Modifier.size(64.dp),
-                            tint = MaterialTheme.colorScheme.primary.copy(alpha = 0.5f)
+                            modifier = Modifier.size(72.dp),
+                            tint = MaterialTheme.colorScheme.primary.copy(alpha = 0.4f)
                         )
                         Spacer(modifier = Modifier.height(16.dp))
                         Text(
-                            text = if (uiState is UiState.Scanning) "正在分析..." else "请先扫描项目",
-                            style = MaterialTheme.typography.bodyLarge,
+                            text = if (uiState is UiState.Scanning) "正在分析..." else "暂无统计数据",
+                            style = MaterialTheme.typography.titleMedium,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                        Spacer(modifier = Modifier.height(8.dp))
+                        Text(
+                            text = if (uiState is UiState.Scanning) "扫描完成后将自动显示统计信息" else "请先扫描 UE5 项目以查看资源统计",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
                         )
                     }
                 }

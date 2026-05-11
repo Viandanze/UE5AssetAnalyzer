@@ -1,6 +1,7 @@
 package com.example.ue5analyzer.ui.screens
 
 import android.net.Uri
+import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.*
@@ -27,6 +28,7 @@ import androidx.compose.ui.unit.sp
 import com.example.ue5analyzer.domain.report.ReportGenerator
 import com.example.ue5analyzer.ui.viewmodel.MainViewModel
 import com.example.ue5analyzer.ui.viewmodel.UiState
+import kotlinx.coroutines.launch
 
 /**
  * 报告页面 - 预览和导出报告
@@ -43,12 +45,33 @@ fun ReportScreen(
     
     val reportGenerator = remember { ReportGenerator(context) }
     
+    // Snackbar 状态
+    val snackbarHostState = remember { SnackbarHostState() }
+    
     // 报告导出
     val reportSaver = rememberLauncherForActivityResult(
         ActivityResultContracts.CreateDocument("text/markdown")
     ) { uri: Uri? ->
-        uri?.let { viewModel.exportReport(it) }
+        uri?.let { 
+            val success = viewModel.exportReport(it)
+            viewModelScope.launch {
+                if (success) {
+                    snackbarHostState.showSnackbar(
+                        message = "报告已导出",
+                        duration = SnackbarDuration.Short
+                    )
+                } else {
+                    snackbarHostState.showSnackbar(
+                        message = "导出失败",
+                        duration = SnackbarDuration.Short
+                    )
+                }
+            }
+        }
     }
+    
+    // 协程作用域
+    val scope = rememberCoroutineScope()
     
     Scaffold(
         topBar = {
@@ -76,7 +99,8 @@ fun ReportScreen(
                     }
                 }
             )
-        }
+        },
+        snackbarHost = { SnackbarHost(snackbarHostState) }
     ) { padding ->
         when (uiState) {
             is UiState.Idle, is UiState.Scanning -> {
@@ -92,14 +116,20 @@ fun ReportScreen(
                         Icon(
                             imageVector = Icons.Default.Description,
                             contentDescription = null,
-                            modifier = Modifier.size(64.dp),
-                            tint = MaterialTheme.colorScheme.primary.copy(alpha = 0.5f)
+                            modifier = Modifier.size(72.dp),
+                            tint = MaterialTheme.colorScheme.primary.copy(alpha = 0.4f)
                         )
                         Spacer(modifier = Modifier.height(16.dp))
                         Text(
-                            text = if (uiState is UiState.Scanning) "正在生成报告..." else "请先扫描项目",
-                            style = MaterialTheme.typography.bodyLarge,
+                            text = if (uiState is UiState.Scanning) "正在生成报告..." else "暂无分析报告",
+                            style = MaterialTheme.typography.titleMedium,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                        Spacer(modifier = Modifier.height(8.dp))
+                        Text(
+                            text = if (uiState is UiState.Scanning) "扫描完成后将自动生成报告" else "请先扫描 UE5 项目以生成资源分析报告",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
                         )
                     }
                 }

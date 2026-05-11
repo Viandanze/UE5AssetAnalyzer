@@ -1,6 +1,5 @@
 package com.example.ue5analyzer.ui.screens
 
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -16,6 +15,7 @@ import androidx.compose.ui.unit.dp
 import com.example.ue5analyzer.model.AssetType
 import com.example.ue5analyzer.model.OrphanRiskLevel
 import com.example.ue5analyzer.model.UEAsset
+import com.example.ue5analyzer.ui.components.DependencyGraph
 import com.example.ue5analyzer.ui.viewmodel.MainViewModel
 
 /**
@@ -34,6 +34,10 @@ fun AssetDetailScreen(
     val asset = remember(assetId, assets) { assets.find { it.id == assetId } }
     val assetMap = remember(assets) { assets.associateBy { it.id } }
     
+    // Tab 状态
+    var selectedTab by remember { mutableIntStateOf(0) }
+    val tabs = listOf("详情", "依赖图")
+    
     Scaffold(
         topBar = {
             TopAppBar(
@@ -49,27 +53,81 @@ fun AssetDetailScreen(
             )
         }
     ) { padding ->
-        if (asset == null) {
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(padding),
-                contentAlignment = Alignment.Center
-            ) {
-                Text(
-                    text = "资源未找到",
-                    style = MaterialTheme.typography.bodyLarge,
-                    color = MaterialTheme.colorScheme.error
-                )
+        Column(
+            modifier = modifier
+                .fillMaxSize()
+                .padding(padding)
+        ) {
+            // TabRow
+            TabRow(selectedTabIndex = selectedTab) {
+                tabs.forEachIndexed { index, title ->
+                    Tab(
+                        selected = selectedTab == index,
+                        onClick = { selectedTab = index },
+                        text = { Text(title) },
+                        icon = {
+                            Icon(
+                                imageVector = if (index == 0) Icons.Default.Info else Icons.Default.AccountTree,
+                                contentDescription = null
+                            )
+                        }
+                    )
+                }
             }
-        } else {
-            AssetDetailContent(
-                asset = asset,
-                assets = assets,
-                assetMap = assetMap,
-                onAssetClick = onAssetClick,
-                modifier = Modifier.padding(padding)
-            )
+            
+            // Tab 内容
+            when (selectedTab) {
+                0 -> {
+                    // 详情 Tab
+                    if (asset == null) {
+                        Box(
+                            modifier = Modifier.fillMaxSize(),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Text(
+                                text = "资源未找到",
+                                style = MaterialTheme.typography.bodyLarge,
+                                color = MaterialTheme.colorScheme.error
+                            )
+                        }
+                    } else {
+                        AssetDetailContent(
+                            asset = asset,
+                            assets = assets,
+                            assetMap = assetMap,
+                            onAssetClick = onAssetClick,
+                            modifier = Modifier.weight(1f)
+                        )
+                    }
+                }
+                1 -> {
+                    // 依赖图 Tab
+                    if (asset == null) {
+                        Box(
+                            modifier = Modifier.fillMaxSize(),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Text(
+                                text = "资源未找到",
+                                style = MaterialTheme.typography.bodyLarge,
+                                color = MaterialTheme.colorScheme.error
+                            )
+                        }
+                    } else {
+                        DependencyGraph(
+                            currentAsset = asset,
+                            assets = assets,
+                            onNodeClick = { clickedId ->
+                                // 点击节点时，如果点击的不是当前资源，跳转到对应资源
+                                if (clickedId != assetId) {
+                                    onAssetClick(clickedId)
+                                }
+                            },
+                            modifier = Modifier.weight(1f)
+                        )
+                    }
+                }
+            }
         }
     }
 }
