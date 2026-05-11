@@ -6,6 +6,10 @@ import java.util.*
 /**
  * 依赖图分析器
  */
+
+// 魔法数字常量
+private const val HEALTH_REF_AVERAGE = 5f  // 健康度计算中引用数参考平均值
+
 class DependencyAnalyzer {
     
     /**
@@ -49,46 +53,44 @@ class DependencyAnalyzer {
     }
     
     /**
-     * 查找循环依赖（去重版本）
+     * 查找循环依赖（去重版本）- 使用迭代DFS避免栈溢出
      */
     fun findCircularDependencies(assets: List<UEAsset>): List<List<String>> {
         val cycles = mutableListOf<List<String>>()
         val assetMap = assets.associateBy { it.id }
-        val assetNameMap = assets.associateBy { it.id }
         val visited = mutableSetOf<String>()
-        val recursionStack = mutableSetOf<String>()
         
-        fun dfs(assetId: String, path: List<String>): Boolean {
-            if (assetId in recursionStack) {
-                val cycleStart = path.indexOf(assetId)
-                if (cycleStart >= 0) {
-                    cycles.add(path.subList(cycleStart, path.size) + assetId)
+        // 遍历所有节点作为起点
+        assets.forEach { startAsset ->
+            if (startAsset.id in visited) return@forEach
+            
+            // 迭代DFS使用显式栈
+            val stack = ArrayDeque<Pair<String, List<String>>>()
+            stack.push(startAsset.id to emptyList())
+            
+            while (stack.isNotEmpty()) {
+                val (currentId, path) = stack.pop()
+                
+                // 如果当前节点已在当前路径中，说明存在环
+                if (currentId in path) {
+                    val cycleStart = path.indexOf(currentId)
+                    if (cycleStart >= 0) {
+                        cycles.add(path.subList(cycleStart, path.size) + currentId)
+                    }
+                    continue
                 }
-                return true
+                
+                if (currentId in visited) continue
+                visited.add(currentId)
+                
+                val asset = assetMap[currentId] ?: continue
+                val newPath = path + currentId
+                
+                // 将依赖项压入栈（逆序以保持原始顺序）
+                for (i in asset.dependencies.indices.reversed()) {
+                    stack.push(asset.dependencies[i] to newPath)
+                }
             }
-            
-            if (assetId in visited) return false
-            
-            visited.add(assetId)
-            recursionStack.add(assetId)
-            
-            val asset = assetMap[assetId] ?: return false
-            for (depId in asset.dependencies) {
-                dfs(depId, path + assetId)
-            }
-            
-            recursionStack.remove(assetId)
-            return false
-        }
-        
-        // 只在循环外声明visited，跨DFS保持
-        // recursionStack每次DFS前清空
-        assets.forEach { asset ->
-            if (asset.id !in visited) {
-                recursionStack.clear()  // 只清recursionStack
-                dfs(asset.id, emptyList())
-            }
-            // 不清visited
         }
         
         // 去重：将环按排序后的节点集合去重
@@ -164,46 +166,48 @@ class AssetAnalyzer {
     }
     
     /**
-     * 查找循环依赖（返回资产名称列表）
+     * 查找循环依赖（返回资产名称列表）- 使用迭代DFS避免栈溢出
      */
     private fun findCircularDependenciesNames(assets: List<UEAsset>): List<List<String>> {
         val assetMap = assets.associateBy { it.id }
         val cycles = mutableListOf<List<String>>()
         val visited = mutableSetOf<String>()
-        val recursionStack = mutableSetOf<String>()
         
-        fun dfs(assetId: String, path: List<String>): Boolean {
-            if (assetId in recursionStack) {
-                val cycleStart = path.indexOf(assetId)
-                if (cycleStart >= 0) {
-                    // 将ID转换为名称
-                    val cycleIds = path.subList(cycleStart, path.size) + assetId
-                    val cycleNames = cycleIds.mapNotNull { assetMap[it]?.name }
-                    if (cycleNames.isNotEmpty()) {
-                        cycles.add(cycleNames)
+        // 遍历所有节点作为起点
+        assets.forEach { startAsset ->
+            if (startAsset.id in visited) return@forEach
+            
+            // 迭代DFS使用显式栈
+            val stack = ArrayDeque<Pair<String, List<String>>>()
+            stack.push(startAsset.id to emptyList())
+            
+            while (stack.isNotEmpty()) {
+                val (currentId, path) = stack.pop()
+                
+                // 如果当前节点已在当前路径中，说明存在环
+                if (currentId in path) {
+                    val cycleStart = path.indexOf(currentId)
+                    if (cycleStart >= 0) {
+                        // 将ID转换为名称
+                        val cycleIds = path.subList(cycleStart, path.size) + currentId
+                        val cycleNames = cycleIds.mapNotNull { assetMap[it]?.name }
+                        if (cycleNames.isNotEmpty()) {
+                            cycles.add(cycleNames)
+                        }
                     }
+                    continue
                 }
-                return true
-            }
-            
-            if (assetId in visited) return false
-            
-            visited.add(assetId)
-            recursionStack.add(assetId)
-            
-            val asset = assetMap[assetId] ?: return false
-            for (depId in asset.dependencies) {
-                dfs(depId, path + assetId)
-            }
-            
-            recursionStack.remove(assetId)
-            return false
-        }
-        
-        assets.forEach { asset ->
-            if (asset.id !in visited) {
-                recursionStack.clear()
-                dfs(asset.id, emptyList())
+                
+                if (currentId in visited) continue
+                visited.add(currentId)
+                
+                val asset = assetMap[currentId] ?: continue
+                val newPath = path + currentId
+                
+                // 将依赖项压入栈（逆序以保持原始顺序）
+                for (i in asset.dependencies.indices.reversed()) {
+                    stack.push(asset.dependencies[i] to newPath)
+                }
             }
         }
         
@@ -233,7 +237,7 @@ class AssetAnalyzer {
         
         // 孤立资源越少，平均引用越多，得分越高
         val orphanScore = (1 - orphanRatio) * 50
-        val refScore = minOf(avgReferences / 5f, 1f) * 50
+        val refScore = minOf(avgReferences / HEALTH_REF_AVERAGE, 1f) * 50
         
         return (orphanScore + refScore).toInt()
     }

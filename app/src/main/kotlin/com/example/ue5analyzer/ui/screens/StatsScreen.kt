@@ -10,13 +10,13 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
-import com.example.ue5analyzer.domain.analyzer.AssetAnalyzer
 import com.example.ue5analyzer.domain.analyzer.DependencyAnalyzer
 import com.example.ue5analyzer.model.AssetType
 import com.example.ue5analyzer.model.UEAsset
 import com.example.ue5analyzer.ui.components.*
 import com.example.ue5analyzer.ui.viewmodel.MainViewModel
 import com.example.ue5analyzer.ui.viewmodel.UiState
+import com.example.ue5analyzer.util.FormatUtils
 
 /**
  * 统计页面 - 显示资源分析统计图表
@@ -33,8 +33,9 @@ fun StatsScreen(
     
     val analyzer = remember { AssetAnalyzer() }
     val dependencyAnalyzer = remember { DependencyAnalyzer() }
+    // 使用 derivedStateOf 避免在每次重组时重新计算
     val circularDeps by remember(assets) { 
-        mutableStateOf(dependencyAnalyzer.findCircularDependencies(assets)) 
+        derivedStateOf { dependencyAnalyzer.findCircularDependencies(assets) } 
     }
     
     Scaffold(
@@ -183,7 +184,7 @@ private fun ProjectOverviewSection(
         
         StatCard(
             title = "项目总大小",
-            value = formatFileSize(totalSize),
+            value = FormatUtils.formatFileSize(totalSize),
             icon = {
                 Icon(
                     imageVector = Icons.Default.Storage,

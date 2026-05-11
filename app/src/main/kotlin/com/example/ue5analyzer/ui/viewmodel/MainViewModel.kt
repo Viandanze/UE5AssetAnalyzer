@@ -19,9 +19,13 @@ import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 import java.util.UUID
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 
 /**
  * 主 ViewModel
+ * TODO: 考虑拆分为多个 ViewModel（如 ScanViewModel、FilterViewModel）以降低职责耦合度
+ * 当前设计将扫描、过滤、排序逻辑集中在此，便于管理但可能导致维护困难
  */
 class MainViewModel(application: Application) : AndroidViewModel(application) {
     
@@ -87,6 +91,9 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     // 扫描协程任务
     private var scanJob: Job? = null
     
+    // 过滤操作互斥锁，确保线程安全
+    private val filterMutex = Mutex()
+    
     /**
      * 设置孤立风险等级筛选
      */
@@ -105,15 +112,22 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             _scanProgress.value = ScanProgress(scannedCount = 0, totalCount = 0, currentFile = "")
             
             try {
+                // SAF 权限持久化检查
+                val hasPermission = context.contentResolver.persistedUriPermissions
+                    .any { it.uri == uri && it.isReadPermission }
+                if (!hasPermission) {
+                    _uiState.value = UiState.Error("权限已过期，请重新选择项目文件夹")
+                    return@launch
+                }
+                
                 // 带进度回调的扫描
                 val scanResult = parser.scanProject(uri) { count, total, name ->
                     _scanProgress.value = ScanProgress(scannedCount = count, totalCount = total, currentFile = name)
                 }
                 
                 // 保存项目
-                // 先查询是否已有同名项目
-                val existingProject = db.projectDao().getAllProjects().first()
-                    .find { it.name == scanResult.projectName }
+                // 使用 getProjectByName 直接查询，避免加载所有项目后过滤
+                val existingProject = db.projectDao().getProjectByName(scanResult.projectName)
                 
                 val projectId = if (existingProject != null) {
                     // 更新已有项目
@@ -276,43 +290,48 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     
     /**
      * 应用过滤条件和排序
+     * 使用 Mutex 确保线程安全，防止并发访问冲突
      */
     private fun applyFilters() {
-        var result = _assets.value
-        
-        // 搜索过滤（支持名称和路径搜索）
-        if (_searchQuery.value.isNotEmpty()) {
-            val query = _searchQuery.value
-            result = result.filter { 
-                it.name.contains(query, ignoreCase = true) || 
-                it.path.contains(query, ignoreCase = true) 
+        viewModelScope.launch {
+            filterMutex.withLock {
+                var result = _assets.value
+                
+                // 搜索过滤（支持名称和路径搜索）
+                if (_searchQuery.value.isNotEmpty()) {
+                    val query = _searchQuery.value
+                    result = result.filter { 
+                        it.name.contains(query, ignoreCase = true) || 
+                        it.path.contains(query, ignoreCase = true) 
+                    }
+                }
+                
+                // 类型过滤
+                _filterType.value?.let { type ->
+                    result = result.filter { it.type == type }
+                }
+                
+                // 孤立资源过滤
+                if (_showOrphanOnly.value) {
+                    result = result.filter { it.isOrphan }
+                }
+                
+                // 孤立风险等级筛选
+                _orphanRiskLevelFilter.value?.let { level ->
+                    result = result.filter { it.orphanRiskLevel == level }
+                }
+                
+                // 排序
+                result = when (_sortOrder.value) {
+                    SortOrder.NAME -> result.sortedBy { it.name.lowercase() }
+                    SortOrder.SIZE_DESC -> result.sortedByDescending { it.size }
+                    SortOrder.REFS_DESC -> result.sortedByDescending { it.references.size }
+                    SortOrder.TYPE -> result.sortedBy { it.type.name }
+                }
+                
+                _filteredAssets.value = result
             }
         }
-        
-        // 类型过滤
-        _filterType.value?.let { type ->
-            result = result.filter { it.type == type }
-        }
-        
-        // 孤立资源过滤
-        if (_showOrphanOnly.value) {
-            result = result.filter { it.isOrphan }
-        }
-        
-        // 孤立风险等级筛选
-        _orphanRiskLevelFilter.value?.let { level ->
-            result = result.filter { it.orphanRiskLevel == level }
-        }
-        
-        // 排序
-        result = when (_sortOrder.value) {
-            SortOrder.NAME -> result.sortedBy { it.name.lowercase() }
-            SortOrder.SIZE_DESC -> result.sortedByDescending { it.size }
-            SortOrder.REFS_DESC -> result.sortedByDescending { it.references.size }
-            SortOrder.TYPE -> result.sortedBy { it.type.name }
-        }
-        
-        _filteredAssets.value = result
     }
     
     /**
@@ -376,12 +395,14 @@ fun AssetEntity.toModel() = UEAsset(
     id = id,
     name = name,
     path = path,
-    type = AssetType.valueOf(type),
+    // 使用 entries.find 替代 valueOf，防止未知类型抛异常
+    type = AssetType.entries.find { it.name == type } ?: AssetType.UNKNOWN,
     size = size,
     dependencies = Json.decodeFromString(dependencies),
     references = Json.decodeFromString(references),
     isOrphan = isOrphan,
-    orphanRiskLevel = OrphanRiskLevel.valueOf(orphanRiskLevel),
+    // 使用 entries.find 替代 valueOf，防止未知风险等级抛异常
+    orphanRiskLevel = OrphanRiskLevel.entries.find { it.name == orphanRiskLevel } ?: OrphanRiskLevel.NONE,
     lastModified = lastModified
 )
 

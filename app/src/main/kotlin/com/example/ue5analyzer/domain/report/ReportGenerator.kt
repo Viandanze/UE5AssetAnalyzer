@@ -4,6 +4,7 @@ import android.content.Context
 import android.content.Intent
 import android.net.Uri
 import com.example.ue5analyzer.model.*
+import com.example.ue5analyzer.util.FormatUtils
 import java.text.SimpleDateFormat
 import java.util.*
 
@@ -34,7 +35,7 @@ class ReportGenerator(private val context: Context) {
             appendLine("| 指标 | 数值 |")
             appendLine("|-----|------|")
             appendLine("| 总资源数 | ${report.totalAssets} |")
-            appendLine("| 总大小 | ${formatSize(report.totalSize)} |")
+            appendLine("| 总大小 | ${FormatUtils.formatFileSize(report.totalSize)} |")
             appendLine("| 孤立资源 | ${report.orphanCount} |")
             appendLine("| 健康度 | ${report.healthScore}% |")
             appendLine()
@@ -58,7 +59,7 @@ class ReportGenerator(private val context: Context) {
             appendLine("| 资源名称 | 类型 | 大小 |")
             appendLine("|---------|------|------|")
             report.largestAssets.forEach { asset ->
-                appendLine("| ${asset.name} | ${asset.type.displayName} | ${formatSize(asset.size)} |")
+                appendLine("| ${asset.name} | ${asset.type.displayName} | ${FormatUtils.formatFileSize(asset.size)} |")
             }
             appendLine()
             
@@ -81,7 +82,7 @@ class ReportGenerator(private val context: Context) {
                 appendLine("| 资源名称 | 类型 | 大小 |")
                 appendLine("|---------|------|------|")
                 report.orphanAssets.forEach { asset ->
-                    appendLine("| ${asset.name} | ${asset.type.displayName} | ${formatSize(asset.size)} |")
+                    appendLine("| ${asset.name} | ${asset.type.displayName} | ${FormatUtils.formatFileSize(asset.size)} |")
                 }
                 appendLine()
             }
@@ -151,14 +152,5 @@ class ReportGenerator(private val context: Context) {
             putExtra(Intent.EXTRA_TEXT, content)
         }
         return Intent.createChooser(intent, "分享报告")
-    }
-    
-    private fun formatSize(bytes: Long): String {
-        return when {
-            bytes < 1024 -> "$bytes B"
-            bytes < 1024 * 1024 -> "${bytes / 1024} KB"
-            bytes < 1024 * 1024 * 1024 -> String.format("%.1f MB", bytes / (1024.0 * 1024))
-            else -> String.format("%.1f GB", bytes / (1024.0 * 1024 * 1024))
-        }
     }
 }

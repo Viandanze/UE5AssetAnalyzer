@@ -11,6 +11,8 @@ android {
 
     defaultConfig {
         applicationId = "com.example.ue5analyzer"
+        // minSdk 26 (Android 8.0): 兼容 SAF Storage Access Framework 和 DocumentFile API
+        // DocumentFile API 需要 API 26+， SAF 权限持久化需要 API 30+
         minSdk = 26
         targetSdk = 34
         versionCode = 1

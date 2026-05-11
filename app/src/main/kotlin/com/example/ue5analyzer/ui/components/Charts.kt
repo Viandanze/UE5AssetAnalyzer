@@ -20,6 +20,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import com.example.ue5analyzer.util.FormatUtils
 
 /**
  * 扩展的饼图颜色列表（15种）
@@ -44,6 +45,7 @@ private val chartColors = listOf(
 
 /**
  * 环形进度条 - 用于健康度评分显示
+ * 优化：直接使用 animateFloatAsState，无需 LaunchedEffect
  */
 @Composable
 fun CircularProgressBar(
@@ -54,16 +56,12 @@ fun CircularProgressBar(
     color: Color = MaterialTheme.colorScheme.primary,
     backgroundColor: Color = MaterialTheme.colorScheme.surfaceVariant
 ) {
-    var animationPlayed by remember { mutableStateOf(false) }
+    // 直接使用 animateFloatAsState，targetValue 变化时自动触发动画
     val currentPercentage by animateFloatAsState(
-        targetValue = if (animationPlayed) percentage else 0f,
+        targetValue = percentage,
         animationSpec = tween(durationMillis = animationDuration),
         label = "progress"
     )
-
-    LaunchedEffect(key1 = true) {
-        animationPlayed = true
-    }
 
     Box(
         modifier = modifier,
@@ -115,7 +113,12 @@ fun CircularProgressBar(
 /**
  * 饼图 - 资源类型分布（改进版）
  * 占比小于5%的类型合并为"其他"
+ * 优化：使用常量替代魔法数字，直接使用 animateFloatAsState
  */
+private const val CHART_THRESHOLD_PERCENT = 0.05f  // 5%阈值
+private const val PIE_CHART_SIZE = 150            // 饼图大小(dp)
+private const val LEGEND_MAX_ITEMS = 6            // 图例最大显示项数
+
 @Composable
 fun PieChart(
     data: List<Pair<String, Int>>,
@@ -127,7 +130,6 @@ fun PieChart(
     val total = data.sumOf { it.second }.toFloat()
     
     // 预处理数据：将占比小于5%的类型合并为"其他"
-    val threshold = 0.05f // 5%阈值
     val processedData = remember(data) {
         val sorted = data.sortedByDescending { it.second }
         val mainItems = mutableListOf<Pair<String, Int>>()
@@ -135,7 +137,7 @@ fun PieChart(
         
         sorted.forEach { item ->
             val ratio = item.second / total
-            if (ratio >= threshold) {
+            if (ratio >= CHART_THRESHOLD_PERCENT) {
                 mainItems.add(item)
             } else {
                 otherItems.add(item)
@@ -150,11 +152,12 @@ fun PieChart(
         mainItems
     }
 
-    var animationPlayed by remember { mutableStateOf(false) }
-    
-    LaunchedEffect(key1 = true) {
-        animationPlayed = true
-    }
+    // 直接使用 animateFloatAsState，简化动画状态管理
+    val animationProgress by animateFloatAsState(
+        targetValue = 1f,
+        animationSpec = tween(durationMillis = animationDuration),
+        label = "pie"
+    )
 
     Row(
         modifier = modifier,
@@ -164,16 +167,12 @@ fun PieChart(
         // 饼图
         Canvas(
             modifier = Modifier
-                .size(150.dp)
+                .size(PIE_CHART_SIZE.dp)
                 .padding(8.dp)
         ) {
             var startAngle = -90f
             processedData.forEachIndexed { index, (_, value) ->
-                val sweepAngle = if (animationPlayed) {
-                    (value / total) * 360f
-                } else {
-                    0f
-                }
+                val sweepAngle = animationProgress * (value / total) * 360f
                 drawArc(
                     color = chartColors[index % chartColors.size],
                     startAngle = startAngle,
@@ -192,7 +191,7 @@ fun PieChart(
                 .padding(start = 16.dp),
             verticalArrangement = Arrangement.spacedBy(4.dp)
         ) {
-            processedData.take(6).forEachIndexed { index, (label, value) ->
+            processedData.take(LEGEND_MAX_ITEMS).forEachIndexed { index, (label, value) ->
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(8.dp)
@@ -209,7 +208,7 @@ fun PieChart(
                     )
                 }
             }
-            if (processedData.size > 6) {
+            if (processedData.size > LEGEND_MAX_ITEMS) {
                 Text(
                     text = "...共 ${processedData.size} 种类型",
                     style = MaterialTheme.typography.bodySmall,
@@ -233,23 +232,20 @@ fun BarChart(
 ) {
     if (data.isEmpty()) return
 
-    var animationPlayed by remember { mutableStateOf(false) }
-    
-    LaunchedEffect(key1 = true) {
-        animationPlayed = true
-    }
+    // 直接使用 animateFloatAsState，简化动画状态管理
+    val animationProgress by animateFloatAsState(
+        targetValue = 1f,
+        animationSpec = tween(durationMillis = animationDuration),
+        label = "bar"
+    )
 
     Column(
         modifier = modifier,
         verticalArrangement = Arrangement.spacedBy(8.dp)
     ) {
         data.take(10).forEachIndexed { index, (label, value) ->
-            val progress by animateFloatAsState(
-                targetValue = if (animationPlayed) value.toFloat() / maxValue else 0f,
-                animationSpec = tween(durationMillis = animationDuration + index * 100),
-                label = "bar$index"
-            )
-
+            val progress = animationProgress * value.toFloat() / maxValue
+            
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 verticalAlignment = Alignment.CenterVertically,
@@ -284,7 +280,7 @@ fun BarChart(
                 }
 
                 Text(
-                    text = formatFileSize(value),
+                    text = FormatUtils.formatFileSize(value),
                     style = MaterialTheme.typography.bodySmall,
                     modifier = Modifier.width(60.dp),
                     textAlign = TextAlign.End
@@ -333,14 +329,5 @@ fun StatCard(
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
         }
-    }
-}
-
-private fun formatFileSize(bytes: Long): String {
-    return when {
-        bytes < 1024 -> "$bytes B"
-        bytes < 1024 * 1024 -> "${bytes / 1024} KB"
-        bytes < 1024 * 1024 * 1024 -> String.format("%.1f MB", bytes / (1024.0 * 1024))
-        else -> String.format("%.1f GB", bytes / (1024.0 * 1024 * 1024))
     }
 }

@@ -72,6 +72,10 @@ interface ProjectDao {
     @Query("SELECT * FROM projects WHERE id = :id")
     suspend fun getProjectById(id: String): ProjectEntity?
     
+    // 优化：直接通过名称查询，避免加载所有项目后过滤
+    @Query("SELECT * FROM projects WHERE name = :name LIMIT 1")
+    suspend fun getProjectByName(name: String): ProjectEntity?
+    
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertProject(project: ProjectEntity)
     
@@ -103,16 +107,20 @@ abstract class AppDatabase : RoomDatabase() {
         private var INSTANCE: AppDatabase? = null
         
         // 数据库迁移策略占位
-        // 当前版本为1，无需迁移；当需要升级到版本2时，启用 MIGRATION_1_2
+        // 版本2预留：当前两个表结构保持不变，无需实际迁移
+        // 如后续需要添加字段或修改表结构，在此添加迁移逻辑
         val MIGRATION_1_2: Migration = object : Migration(1, 2) {
             override fun migrate(db: SupportSQLiteDatabase) {
-                // TODO: 版本2的迁移逻辑
-                // 示例：添加新字段
-                // db.execSQL("ALTER TABLE assets ADD COLUMN new_column TEXT")
+                // 两个表结构与版本1相同，无需迁移
+                // 如需添加新字段，示例：
+                // db.execSQL("ALTER TABLE assets ADD COLUMN new_field TEXT")
             }
         }
         
         fun getDatabase(context: android.content.Context): AppDatabase {
+            // 双重检查锁定模式（Double-Checked Locking）
+            // 由于 context 参数无法使用 by lazy，此处采用 DCL 模式
+            // INSTANCE 使用 @Volatile 保证可见性
             return INSTANCE ?: synchronized(this) {
                 val instance = Room.databaseBuilder(
                     context.applicationContext,

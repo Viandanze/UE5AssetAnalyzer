@@ -33,6 +33,10 @@ import com.example.ue5analyzer.ui.viewmodel.UiState
 /**
  * 扫描页面 - 原 MainScreen 的扫描和列表功能
  */
+
+// 魔法数字常量
+private const val PERCENTAGE_MAX = 100  // 百分比最大值
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ScanScreen(
@@ -219,7 +223,7 @@ fun LoadingState(
             Spacer(modifier = Modifier.height(8.dp))
             if (progress.totalCount > 0) {
                 // 显示进度百分比
-                val percentage = (progress.scannedCount * 100 / progress.totalCount).coerceIn(0, 100)
+                val percentage = (progress.scannedCount * PERCENTAGE_MAX / progress.totalCount).coerceIn(0, PERCENTAGE_MAX)
                 Text(
                     text = "已扫描 ${progress.scannedCount} / ${progress.totalCount} ($percentage%)",
                     style = MaterialTheme.typography.bodySmall,
@@ -426,7 +430,7 @@ fun AssetList(
             contentPadding = PaddingValues(16.dp),
             verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
-            items(assets) { asset ->
+            items(items = assets, key = { it.id }) { asset ->
                 AssetItem(
                     asset = asset,
                     onClick = { onAssetClick(asset) },
@@ -521,6 +525,7 @@ fun AssetItem(
 
 /**
  * 高亮匹配的文本
+ * 使用 remember 缓存结果，只有 text 或 query 变化时才重新计算
  */
 @Composable
 fun highlightText(text: String, query: String): AnnotatedString {
@@ -528,30 +533,33 @@ fun highlightText(text: String, query: String): AnnotatedString {
         return androidx.compose.ui.text.AnnotatedString(text)
     }
     
+    // 提取颜色到 remember 外部
     val primaryColor = MaterialTheme.colorScheme.primary
     
-    return buildAnnotatedString {
-        var lastIndex = 0
-        val lowerText = text.lowercase()
-        val lowerQuery = query.lowercase()
-        
-        var index = lowerText.indexOf(lowerQuery)
-        while (index >= 0) {
-            // 添加匹配前的文本
-            if (index > lastIndex) {
-                append(text.substring(lastIndex, index))
+    return remember(text, query, primaryColor) {
+        buildAnnotatedString {
+            var lastIndex = 0
+            val lowerText = text.lowercase()
+            val lowerQuery = query.lowercase()
+            
+            var index = lowerText.indexOf(lowerQuery)
+            while (index >= 0) {
+                // 添加匹配前的文本
+                if (index > lastIndex) {
+                    append(text.substring(lastIndex, index))
+                }
+                // 添加高亮的匹配文本
+                withStyle(SpanStyle(fontWeight = FontWeight.Bold, color = primaryColor)) {
+                    append(text.substring(index, index + query.length))
+                }
+                lastIndex = index + query.length
+                index = lowerText.indexOf(lowerQuery, lastIndex)
             }
-            // 添加高亮的匹配文本
-            withStyle(SpanStyle(fontWeight = FontWeight.Bold, color = primaryColor)) {
-                append(text.substring(index, index + query.length))
+            
+            // 添加剩余文本
+            if (lastIndex < text.length) {
+                append(text.substring(lastIndex))
             }
-            lastIndex = index + query.length
-            index = lowerText.indexOf(lowerQuery, lastIndex)
-        }
-        
-        // 添加剩余文本
-        if (lastIndex < text.length) {
-            append(text.substring(lastIndex))
         }
     }
 }

@@ -14,6 +14,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.example.ue5analyzer.ui.viewmodel.ProjectInfo
+import com.example.ue5analyzer.util.FormatUtils
 
 /**
  * 历史项目列表页面
@@ -208,7 +209,7 @@ private fun ProjectItem(
                             tint = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                         Text(
-                            text = formatProjectSize(project.totalSize),
+                            text = FormatUtils.formatFileSize(project.totalSize),
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
@@ -219,7 +220,7 @@ private fun ProjectItem(
                 
                 // 扫描时间
                 Text(
-                    text = "最后扫描: ${formatTimestamp(project.lastScanned)}",
+                    text = "最后扫描: ${FormatUtils.formatTimestamp(project.lastScanned, "yyyy-MM-dd HH:mm")}",
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
                 )
@@ -242,18 +243,4 @@ private fun ProjectItem(
             )
         }
     }
-}
-
-private fun formatProjectSize(bytes: Long): String {
-    return when {
-        bytes < 1024 -> "$bytes B"
-        bytes < 1024 * 1024 -> "${bytes / 1024} KB"
-        bytes < 1024 * 1024 * 1024 -> String.format("%.1f MB", bytes / (1024.0 * 1024))
-        else -> String.format("%.1f GB", bytes / (1024.0 * 1024 * 1024))
-    }
-}
-
-private fun formatTimestamp(timestamp: Long): String {
-    val sdf = java.text.SimpleDateFormat("yyyy-MM-dd HH:mm", java.util.Locale.getDefault())
-    return sdf.format(java.util.Date(timestamp))
 }

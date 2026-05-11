@@ -1,0 +1,230 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<mxGraphModel dx="1200" dy="900" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1200" pageHeight="800" math="0" shadow="0">
+  <root>
+    <mxCell id="0" />
+    <mxCell id="1" parent="0" />
+
+    
+    <mxCell id="title" value="UE5 Asset Analyzer - 页面流转图" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;fontFamily=Helvetica;fontSize=18;fontStyle=1;" vertex="1" parent="1">
+      <mxGeometry x="400" y="30" width="400" height="40" as="geometry" />
+    </mxCell>
+
+    
+    <mxCell id="bottomNavBg" value="" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#e3f2fd;strokeColor=#1976d2;fontSize=12;" vertex="1" parent="1">
+      <mxGeometry x="725" y="455" width="1000" height="120" as="geometry" />
+    </mxCell>
+
+    
+    <mxCell id="bottomNavLabel" value="底部导航栏" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;fontFamily=Helvetica;fontSize=12;fontColor=#1976d2;" vertex="1" parent="1">
+      <mxGeometry x="3260" y="505" width="100" height="20" as="geometry" />
+    </mxCell>
+
+    
+
+    
+    <mxCell id="scanScreen" value="ScanScreen&amp;#xa;扫描页面（主页）" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#1976d2;strokeColor=#0d47a1;fontColor=#ffffff;fontSize=12;fontStyle=1;" vertex="1" parent="1">
+      <mxGeometry x="2180" y="485" width="160" height="60" as="geometry" />
+    </mxCell>
+
+    
+    <mxCell id="statsScreen" value="StatsScreen&amp;#xa;统计页面" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#1976d2;strokeColor=#0d47a1;fontColor=#ffffff;fontSize=12;fontStyle=1;" vertex="1" parent="1">
+      <mxGeometry x="2820" y="485" width="160" height="60" as="geometry" />
+    </mxCell>
+
+    
+    <mxCell id="reportScreen" value="ReportScreen&amp;#xa;报告页面" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#1976d2;strokeColor=#0d47a1;fontColor=#ffffff;fontSize=12;fontStyle=1;" vertex="1" parent="1">
+      <mxGeometry x="3820" y="485" width="160" height="60" as="geometry" />
+    </mxCell>
+
+    
+    <mxCell id="navArrow1" value="⇄" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;fontFamily=Helvetica;fontSize=20;fontColor=#1976d2;fontStyle=1;" vertex="1" parent="1">
+      <mxGeometry x="2400" y="500" width="40" height="30" as="geometry" />
+    </mxCell>
+    <mxCell id="navArrow2" value="⇄" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;fontFamily=Helvetica;fontSize=20;fontColor=#1976d2;fontStyle=1;" vertex="1" parent="1">
+      <mxGeometry x="3420" y="500" width="40" height="30" as="geometry" />
+    </mxCell>
+
+    
+    <mxCell id="navDesc" value="三页并列切换" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;fontFamily=Helvetica;fontSize=11;fontColor=#666666;fontStyle=2;" vertex="1" parent="1">
+      <mxGeometry x="3040" y="502" width="160" height="25" as="geometry" />
+    </mxCell>
+
+    
+
+    
+    <mxCell id="projectListScreen" value="ProjectListScreen&amp;#xa;历史项目列表" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ff9800;strokeColor=#e65100;fontColor=#ffffff;fontSize=12;fontStyle=1;" vertex="1" parent="1">
+      <mxGeometry x="110" y="485" width="180" height="60" as="geometry" />
+    </mxCell>
+
+    
+
+    
+    <mxCell id="assetDetailScreen" value="AssetDetailScreen&amp;#xa;资源详情" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#4caf50;strokeColor=#2e7d32;fontColor=#ffffff;fontSize=12;fontStyle=1;" vertex="1" parent="1">
+      <mxGeometry x="4040" y="485" width="180" height="60" as="geometry" />
+    </mxCell>
+
+    
+    <mxCell id="assetDetailScreen2" value="AssetDetailScreen&amp;#xa;(深度导航)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#81c784;strokeColor=#4caf50;fontColor=#ffffff;fontSize=11;dashed=1;" vertex="1" parent="1">
+      <mxGeometry x="4280" y="490" width="180" height="50" as="geometry" />
+    </mxCell>
+
+    
+
+    
+    <mxCell id="edge1" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;strokeColor=#ff9800;strokeWidth=2;" parent="1" source="scanScreen" target="projectListScreen" edge="1">
+      <mxGeometry relative="1" as="geometry">
+        <Array as="points">
+          <mxPoint x="160" y="520" />
+          <mxPoint x="160" y="280" />
+        </Array>
+      </mxGeometry>
+    </mxCell>
+    <mxCell id="edge1_label" value="点击历史按钮" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;fontFamily=Helvetica;fontSize=10;fontColor=#ff9800;" vertex="1" parent="1">
+      <mxGeometry x="560" y="505" width="80" height="20" as="geometry" />
+    </mxCell>
+
+    
+    <mxCell id="edge2" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;strokeColor=#ff9800;strokeWidth=2;dashed=1;" parent="1" source="projectListScreen" target="scanScreen" edge="1">
+      <mxGeometry relative="1" as="geometry">
+        <Array as="points">
+          <mxPoint x="170" y="280" />
+          <mxPoint x="170" y="560" />
+        </Array>
+      </mxGeometry>
+    </mxCell>
+    <mxCell id="edge2_label" value="选择项目后加载" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;fontFamily=Helvetica;fontSize=10;fontColor=#ff9800;" vertex="1" parent="1">
+      <mxGeometry x="1760" y="505" width="80" height="20" as="geometry" />
+    </mxCell>
+
+    
+    <mxCell id="edge3" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;strokeColor=#4caf50;strokeWidth=2;" parent="1" source="scanScreen" target="assetDetailScreen" edge="1">
+      <mxGeometry relative="1" as="geometry">
+        <Array as="points">
+          <mxPoint x="1040" y="520" />
+          <mxPoint x="1040" y="280" />
+        </Array>
+      </mxGeometry>
+    </mxCell>
+    <mxCell id="edge3_label" value="点击资源项" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;fontFamily=Helvetica;fontSize=10;fontColor=#4caf50;" vertex="1" parent="1">
+      <mxGeometry x="4520" y="505" width="80" height="20" as="geometry" />
+    </mxCell>
+
+    
+    <mxCell id="edge4" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;strokeColor=#4caf50;strokeWidth=2;dashed=1;exitX=0.5;exitY=1;entryX=0.5;entryY=0;" parent="1" source="assetDetailScreen" target="assetDetailScreen2" edge="1">
+      <mxGeometry relative="1" as="geometry" />
+    </mxCell>
+    <mxCell id="edge5" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;strokeColor=#4caf50;strokeWidth=2;dashed=1;exitX=1;exitY=0.5;entryX=0;entryY=0.5;" parent="1" source="assetDetailScreen2" target="assetDetailScreen" edge="1">
+      <mxGeometry relative="1" as="geometry">
+        <Array as="points">
+          <mxPoint x="1150" y="405" />
+        </Array>
+      </mxGeometry>
+    </mxCell>
+    <mxCell id="edge_deep_label" value="点击依赖/引用资源" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;fontFamily=Helvetica;fontSize=10;fontColor=#4caf50;" vertex="1" parent="1">
+      <mxGeometry x="4660" y="505" width="100" height="20" as="geometry" />
+    </mxCell>
+
+    
+
+    
+    <mxCell id="legendBg" value="" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fafafa;strokeColor=#cccccc;fontSize=12;" vertex="1" parent="1">
+      <mxGeometry x="50" y="672" width="300" height="120" as="geometry" />
+    </mxCell>
+
+    
+    <mxCell id="legendTitle" value="图例说明" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;fontFamily=Helvetica;fontSize=12;fontStyle=1;" vertex="1" parent="1">
+      <mxGeometry x="440" y="722" width="80" height="20" as="geometry" />
+    </mxCell>
+
+    
+    <mxCell id="legendItem1" value="" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#1976d2;strokeColor=#0d47a1;spacing=10;" vertex="1" parent="1">
+      <mxGeometry x="580" y="719" width="40" height="25" as="geometry" />
+    </mxCell>
+    <mxCell id="legendItem1Label" value="底部导航页面" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;fontFamily=Helvetica;fontSize=11;" vertex="1" parent="1">
+      <mxGeometry x="880" y="722" width="100" height="20" as="geometry" />
+    </mxCell>
+
+    
+    <mxCell id="legendItem2" value="" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ff9800;strokeColor=#e65100;spacing=10;" vertex="1" parent="1">
+      <mxGeometry x="680" y="720" width="40" height="25" as="geometry" />
+    </mxCell>
+    <mxCell id="legendItem2Label" value="普通页面" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;fontFamily=Helvetica;fontSize=11;" vertex="1" parent="1">
+      <mxGeometry x="1010" y="722" width="100" height="20" as="geometry" />
+    </mxCell>
+
+    
+    <mxCell id="legendItem3" value="" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#4caf50;strokeColor=#2e7d32;spacing=10;" vertex="1" parent="1">
+      <mxGeometry x="780" y="719" width="40" height="25" as="geometry" />
+    </mxCell>
+    <mxCell id="legendItem3Label" value="详情页面" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;fontFamily=Helvetica;fontSize=11;" vertex="1" parent="1">
+      <mxGeometry x="1175" y="722" width="100" height="20" as="geometry" />
+    </mxCell>
+
+    
+    <mxCell id="legendLine1" value="" style="endArrow=classic;html=1;strokeColor=#666666;strokeWidth=2;exitX=1;exitY=0.5;entryX=0;entryY=0.5;" edge="1" parent="1">
+      <mxGeometry relative="1" as="geometry">
+        <mxPoint x="240" y="702" as="sourcePoint" />
+        <mxPoint x="280" y="702" as="targetPoint" />
+      </mxGeometry>
+    </mxCell>
+    <mxCell id="legendLine1Label" value="单向导航" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;fontFamily=Helvetica;fontSize=11;" vertex="1" parent="1">
+      <mxGeometry x="1360" y="722" width="80" height="20" as="geometry" />
+    </mxCell>
+
+    
+    <mxCell id="legendLine2" value="" style="endArrow=classic;html=1;strokeColor=#666666;strokeWidth=2;exitX=1;exitY=0.5;entryX=0;entryY=0.5;" edge="1" parent="1">
+      <mxGeometry relative="1" as="geometry">
+        <mxPoint x="240" y="732" as="sourcePoint" />
+        <mxPoint x="280" y="732" as="targetPoint" />
+      </mxGeometry>
+    </mxCell>
+    <mxCell id="legendLine2Reverse" value="" style="endArrow=classic;html=1;strokeColor=#666666;strokeWidth=2;exitX=0;exitY=0.5;entryX=1;entryY=0.5;" edge="1" parent="1">
+      <mxGeometry relative="1" as="geometry">
+        <mxPoint x="280" y="732" as="sourcePoint" />
+        <mxPoint x="240" y="732" as="targetPoint" />
+      </mxGeometry>
+    </mxCell>
+    <mxCell id="legendLine2Label" value="双向切换" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;fontFamily=Helvetica;fontSize=11;" vertex="1" parent="1">
+      <mxGeometry x="1500" y="722" width="80" height="20" as="geometry" />
+    </mxCell>
+
+    
+    <mxCell id="legendLine3" value="" style="endArrow=classic;html=1;strokeColor=#666666;strokeWidth=2;dashed=1;exitX=1;exitY=0.5;entryX=0;entryY=0.5;" edge="1" parent="1">
+      <mxGeometry relative="1" as="geometry">
+        <mxPoint x="240" y="762" as="sourcePoint" />
+        <mxPoint x="280" y="762" as="targetPoint" />
+      </mxGeometry>
+    </mxCell>
+    <mxCell id="legendLine3Label" value="返回导航" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;fontFamily=Helvetica;fontSize=11;" vertex="1" parent="1">
+      <mxGeometry x="1640" y="722" width="80" height="20" as="geometry" />
+    </mxCell>
+
+    
+
+    
+    <mxCell id="scanDesc" value="包含：项目选择、资源列表、搜索筛选" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;fontFamily=Helvetica;fontSize=10;fontColor=#666666;" vertex="1" parent="1">
+      <mxGeometry x="1900" y="505" width="220" height="20" as="geometry" />
+    </mxCell>
+
+    
+    <mxCell id="statsDesc" value="包含：资源类型分布饼图、健康度评分、TOP10" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;fontFamily=Helvetica;fontSize=10;fontColor=#666666;" vertex="1" parent="1">
+      <mxGeometry x="2500" y="505" width="260" height="20" as="geometry" />
+    </mxCell>
+
+    
+    <mxCell id="reportDesc" value="包含：分析报告（Markdown格式）" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;fontFamily=Helvetica;fontSize=10;fontColor=#666666;" vertex="1" parent="1">
+      <mxGeometry x="3520" y="505" width="240" height="20" as="geometry" />
+    </mxCell>
+
+    
+    <mxCell id="assetDesc" value="包含：依赖关系和引用" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;fontFamily=Helvetica;fontSize=10;fontColor=#666666;" vertex="1" parent="1">
+      <mxGeometry x="960" y="200" width="200" height="20" as="geometry" />
+    </mxCell>
+
+    
+    <mxCell id="projectDesc" value="包含：历史项目列表" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;fontFamily=Helvetica;fontSize=10;fontColor=#666666;" vertex="1" parent="1">
+      <mxGeometry x="320" y="505" width="180" height="20" as="geometry" />
+    </mxCell>
+
+  </root>
+</mxGraphModel>

@@ -2,13 +2,16 @@ package com.example.ue5analyzer.data.parser
 
 import android.content.Context
 import android.net.Uri
+import android.util.Log
 import androidx.documentfile.provider.DocumentFile
 import com.example.ue5analyzer.model.*
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.withContext
 import java.io.DataInputStream
 import java.io.FilterInputStream
+import java.io.IOException
 import java.io.InputStream
 import java.nio.ByteBuffer
 import java.nio.ByteOrder
@@ -17,6 +20,11 @@ import java.util.UUID
 /**
  * UE5 项目解析器
  * 核心类：负责扫描项目、解析 uasset 文件
+ * TODO: 考虑将序列化逻辑分离到独立的 Serializer 类中，实现关注点分离
+ * 当前设计将文件解析和业务逻辑混合在一起，可重构为：
+ *   - UassetParser: 负责二进制解析
+ *   - DependencyResolver: 负责依赖关系构建
+ *   - OrphanDetector: 负责孤立资源检测
  */
 class UEProjectParser(private val context: Context) {
     
@@ -260,10 +268,10 @@ class UEProjectParser(private val context: Context) {
         // 2. 先快扫计数
         val totalFiles = countAssetFiles(projectUri)
         
-        // 3. 扫描 Content 目录
+        // 3. 扫描 Content 目录，传入协程上下文用于取消检查
         val contentUri = findContentDirectory(projectUri)
         if (contentUri != null) {
-            scanDirectory(contentUri, assets, onProgress, totalFiles)
+            scanDirectory(contentUri, assets, onProgress, totalFiles, coroutineContext)
         }
         
         // 4. 构建依赖关系
@@ -318,7 +326,9 @@ class UEProjectParser(private val context: Context) {
                     count++
                 }
             }
-        } catch (e: Exception) { }
+        } catch (e: Exception) {
+            Log.w("UEProjectParser", "统计文件数量异常: ${e.message}")
+        }
         return count
     }
     
@@ -356,20 +366,28 @@ class UEProjectParser(private val context: Context) {
     /**
      * 递归扫描目录 - 使用 DocumentFile API + 进度回调
      * @param totalFiles 总文件数（用于进度百分比计算）
+     * @param coroutineContext 协程上下文，用于检查取消状态
      */
-    private fun scanDirectory(
+    private suspend fun scanDirectory(
         directoryUri: Uri, 
         assets: MutableList<UEAsset>,
         onProgress: (Int, Int, String) -> Unit,
-        totalFiles: Int
+        totalFiles: Int,
+        coroutineContext: kotlin.coroutines.CoroutineContext
     ) {
+        // 检查协程是否已取消
+        coroutineContext.ensureActive()
+        
         try {
             val docFile = DocumentFile.fromTreeUri(context, directoryUri) ?: return
             
             docFile.listFiles().forEach { file ->
+                // 在循环中检查取消状态
+                coroutineContext.ensureActive()
+                
                 if (file.isDirectory) {
                     // 递归扫描子目录
-                    scanDirectory(file.uri, assets, onProgress, totalFiles)
+                    scanDirectory(file.uri, assets, onProgress, totalFiles, coroutineContext)
                 } else if (file.name?.endsWith(".uasset") == true) {
                     // 解析 uasset 文件
                     val asset = parseUasset(file.name!!, file.uri.toString(), file.length(), file.uri)
@@ -393,7 +411,8 @@ class UEProjectParser(private val context: Context) {
                 }
             }
         } catch (e: Exception) {
-            // 忽略权限错误或其他异常
+            // 记录异常但继续扫描
+            Log.w("UEProjectParser", "扫描目录异常: ${e.message}")
         }
     }
     
@@ -460,26 +479,34 @@ class UEProjectParser(private val context: Context) {
         if (path.startsWith("content://")) {
             try {
                 uris.add(Uri.parse(path))
-            } catch (e: Exception) { }
+            } catch (e: Exception) {
+                Log.w("UEProjectParser", "URI解析异常: $path, ${e.message}")
+            }
         }
         
         // 方式2: 尝试作为 tree document ID 构建
         try {
             val cleanPath = path.removePrefix("/tree/").removePrefix("document/")
             uris.add(Uri.parse("content://com.android.externalstorage.documents/document/$cleanPath"))
-        } catch (e: Exception) { }
+        } catch (e: Exception) {
+            Log.w("UEProjectParser", "构建document URI异常: ${e.message}")
+        }
         
         // 方式3: 尝试作为 tree URI
         try {
             if (path.contains("/tree/")) {
                 uris.add(Uri.parse(path))
             }
-        } catch (e: Exception) { }
+        } catch (e: Exception) {
+            Log.w("UEProjectParser", "解析tree URI异常: ${e.message}")
+        }
         
         // 方式4: 尝试直接使用 path（适用于某些情况）
         try {
             uris.add(Uri.parse(path))
-        } catch (e: Exception) { }
+        } catch (e: Exception) {
+            Log.w("UEProjectParser", "直接解析URI异常: ${e.message}")
+        }
         
         // 尝试打开每个 URI
         for (uri in uris) {
@@ -498,10 +525,12 @@ class UEProjectParser(private val context: Context) {
             } catch (e: SecurityException) {
                 // 权限不足，尝试下一个
                 inputStream?.close()
-                continue
-            } catch (e: Exception) {
+            } catch (e: IOException) {
+                Log.w("UEProjectParser", "IO异常: ${e.message}")
                 inputStream?.close()
-                continue
+            } catch (e: Exception) {
+                Log.w("UEProjectParser", "读取文件异常: ${e.message}")
+                inputStream?.close()
             }
         }
         
@@ -801,12 +830,18 @@ class UEProjectParser(private val context: Context) {
      * Name Table 条目格式：int32(长度) + UTF-8字符串 + 零终止符 + uint16(非序列化标志)
      */
     private fun parseNameTable(bytes: ByteArray, offset: Long, count: Int): List<String> {
+        // 边界检查：防止整数溢出和越界访问
+        if (offset < 0 || offset > Int.MAX_VALUE || offset > bytes.size) {
+            return emptyList()
+        }
+        
         val result = mutableListOf<String>()
         val buffer = ByteBuffer.wrap(bytes).order(ByteOrder.BIG_ENDIAN)
         
         try {
             buffer.position(offset.toInt())
         } catch (e: Exception) {
+            Log.w("UEProjectParser", "NameTable position 异常: offset=$offset, ${e.message}")
             return result
         }
         
@@ -850,12 +885,18 @@ class UEProjectParser(private val context: Context) {
         count: Int, 
         nameTable: List<String>
     ): List<ImportEntry> {
+        // 边界检查：防止整数溢出和越界访问
+        if (offset < 0 || offset > Int.MAX_VALUE || offset > bytes.size) {
+            return emptyList()
+        }
+        
         val result = mutableListOf<ImportEntry>()
         val buffer = ByteBuffer.wrap(bytes).order(ByteOrder.BIG_ENDIAN)
         
         try {
             buffer.position(offset.toInt())
         } catch (e: Exception) {
+            Log.w("UEProjectParser", "ImportTable position 异常: offset=$offset, ${e.message}")
             return result
         }
         
