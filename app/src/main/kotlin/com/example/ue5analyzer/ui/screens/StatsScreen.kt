@@ -10,6 +10,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
+import com.example.ue5analyzer.domain.analyzer.AssetAnalyzer
 import com.example.ue5analyzer.domain.analyzer.DependencyAnalyzer
 import com.example.ue5analyzer.model.AssetType
 import com.example.ue5analyzer.model.UEAsset
