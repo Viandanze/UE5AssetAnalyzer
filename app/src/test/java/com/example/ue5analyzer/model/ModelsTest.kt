@@ -11,122 +11,122 @@ class ModelsTest {
     // ========== AssetType 枚举测试 ==========
 
     @Test
-    fun `AssetType_fromName_blueprintPrefix_returnsBlueprint() {
+    fun `AssetType fromName blueprintPrefix returnsBlueprint`() {
         val result = AssetType.fromName("BP_MyCharacter")
         assertEquals(AssetType.BLUEPRINT, result)
     }
 
     @Test
-    fun `AssetType_fromName_staticMeshPrefix_returnsStaticMesh() {
+    fun `AssetType fromName staticMeshPrefix returnsStaticMesh`() {
         val result = AssetType.fromName("SM_Cube")
         assertEquals(AssetType.STATIC_MESH, result)
     }
 
     @Test
-    fun `AssetType_fromName_skeletalMeshPrefix_returnsSkeletalMesh() {
+    fun `AssetType fromName skeletalMeshPrefix returnsSkeletalMesh`() {
         val result = AssetType.fromName("SK_Character")
         assertEquals(AssetType.SKELETAL_MESH, result)
     }
 
     @Test
-    fun `AssetType_fromName_materialPrefix_returnsMaterial() {
+    fun `AssetType fromName materialPrefix returnsMaterial`() {
         val result = AssetType.fromName("M_BaseMaterial")
         assertEquals(AssetType.MATERIAL, result)
     }
 
     @Test
-    fun `AssetType_fromName_materialInstancePrefix_returnsMaterialInstance() {
+    fun `AssetType fromName materialInstancePrefix returnsMaterialInstance`() {
         val result = AssetType.fromName("MI_InstancedMaterial")
         assertEquals(AssetType.MATERIAL_INSTANCE, result)
     }
 
     @Test
-    fun `AssetType_fromName_texturePrefix_returnsTexture() {
+    fun `AssetType fromName texturePrefix returnsTexture`() {
         val result = AssetType.fromName("T_Diffuse")
         assertEquals(AssetType.TEXTURE, result)
     }
 
     @Test
-    fun `AssetType_fromName_soundPrefix_returnsSound() {
+    fun `AssetType fromName soundPrefix returnsSound`() {
         val result = AssetType.fromName("S_BackgroundMusic")
         assertEquals(AssetType.SOUND, result)
     }
 
     @Test
-    fun `AssetType_fromName_particleSystemPrefix_returnsParticleSystem() {
+    fun `AssetType fromName particleSystemPrefix returnsParticleSystem`() {
         val result = AssetType.fromName("P_FireEffect")
         assertEquals(AssetType.PARTICLE_SYSTEM, result)
     }
 
     @Test
-    fun `AssetType_fromName_animationPrefix_returnsAnimation() {
+    fun `AssetType fromName animationPrefix returnsAnimation`() {
         val result = AssetType.fromName("A_RunAnimation")
         assertEquals(AssetType.ANIMATION, result)
     }
 
     @Test
-    fun `AssetType_fromName_levelPrefix_returnsLevel() {
+    fun `AssetType fromName levelPrefix returnsLevel`() {
         val result = AssetType.fromName("LVL_MainMenu")
         assertEquals(AssetType.LEVEL, result)
     }
 
     @Test
-    fun `AssetType_fromName_widgetPrefix_returnsWidget() {
+    fun `AssetType fromName widgetPrefix returnsWidget`() {
         val result = AssetType.fromName("WBP_MainHUD")
         assertEquals(AssetType.WIDGET, result)
     }
 
     @Test
-    fun `AssetType_fromName_enumPrefix_returnsEnum() {
+    fun `AssetType fromName enumPrefix returnsEnum`() {
         val result = AssetType.fromName("E_ItemType")
         assertEquals(AssetType.ENUM, result)
     }
 
     @Test
-    fun `AssetType_fromName_structPrefix_returnsStruct() {
+    fun `AssetType fromName structPrefix returnsStruct`() {
         val result = AssetType.fromName("F_PlayerData")
         assertEquals(AssetType.STRUCT, result)
     }
 
     @Test
-    fun `AssetType_fromName_interfacePrefix_returnsInterface() {
+    fun `AssetType fromName interfacePrefix returnsInterface`() {
         val result = AssetType.fromName("I_Damageable")
         assertEquals(AssetType.INTERFACE, result)
     }
 
     @Test
-    fun `AssetType_fromName_dataTablePrefix_returnsDataTable() {
+    fun `AssetType fromName dataTablePrefix returnsDataTable`() {
         val result = AssetType.fromName("DT_WeaponStats")
         assertEquals(AssetType.DATA_TABLE, result)
     }
 
     @Test
-    fun `AssetType_fromName_curvePrefix_returnsCurve() {
+    fun `AssetType fromName curvePrefix returnsCurve`() {
         val result = AssetType.fromName("CR_HealthCurve")
         assertEquals(AssetType.CURVE, result)
     }
 
     @Test
-    fun `AssetType_fromName_unknownPrefix_returnsUnknown() {
+    fun `AssetType fromName unknownPrefix returnsUnknown`() {
         val result = AssetType.fromName("RandomAsset")
         assertEquals(AssetType.UNKNOWN, result)
     }
 
     @Test
-    fun `AssetType_fromName_emptyName_returnsUnknown() {
+    fun `AssetType fromName emptyName returnsUnknown`() {
         val result = AssetType.fromName("")
         assertEquals(AssetType.UNKNOWN, result)
     }
 
     @Test
-    fun `AssetType_fromName_partialMatch_doesNotMatch() {
+    fun `AssetType fromName partialMatch doesNotMatch`() {
         // 名称包含 BP_ 但不是以 BP_ 开头
         val result = AssetType.fromName("MyAsset_BP_Test")
         assertEquals(AssetType.UNKNOWN, result)
     }
 
     @Test
-    fun `AssetType_fromName_caseSensitive() {
+    fun `AssetType fromName caseSensitive`() {
         // UE 资源命名是大小写敏感的
         val result = AssetType.fromName("bp_MyAsset")
         assertEquals(AssetType.UNKNOWN, result)
@@ -135,19 +135,19 @@ class ModelsTest {
     // ========== AssetType displayName 测试 ==========
 
     @Test
-    fun `AssetType_displayName_blueprint_returnsChinese() {
+    fun `AssetType displayName blueprint returnsChinese`() {
         assertEquals("蓝图", AssetType.BLUEPRINT.displayName)
     }
 
     @Test
-    fun `AssetType_displayName_level_returnsChinese() {
+    fun `AssetType displayName level returnsChinese`() {
         assertEquals("关卡", AssetType.LEVEL.displayName)
     }
 
     // ========== OrphanRiskLevel 枚举测试 ==========
 
     @Test
-    fun `OrphanRiskLevel_noReferences_returnsHigh() {
+    fun `OrphanRiskLevel noReferences returnsHigh`() {
         val asset = UEAsset(
             id = "orphan",
             name = "orphan",
@@ -163,7 +163,7 @@ class ModelsTest {
     }
 
     @Test
-    fun `OrphanRiskLevel_oneReference_returnsLow() {
+    fun `OrphanRiskLevel oneReference returnsLow`() {
         val asset = UEAsset(
             id = "lowRisk",
             name = "lowRisk",
@@ -179,7 +179,7 @@ class ModelsTest {
     }
 
     @Test
-    fun `OrphanRiskLevel_twoReferences_returnsNone() {
+    fun `OrphanRiskLevel twoReferences returnsNone`() {
         val asset = UEAsset(
             id = "safe",
             name = "safe",
@@ -195,7 +195,7 @@ class ModelsTest {
     }
 
     @Test
-    fun `OrphanRiskLevel_manyReferences_returnsNone() {
+    fun `OrphanRiskLevel manyReferences returnsNone`() {
         val asset = UEAsset(
             id = "popular",
             name = "popular",
@@ -212,7 +212,7 @@ class ModelsTest {
     // ========== UEAsset 数据类测试 ==========
 
     @Test
-    fun `UEAsset_defaultValues_areCorrect() {
+    fun `UEAsset defaultValues areCorrect`() {
         val asset = UEAsset(
             id = "test",
             name = "Test",
@@ -229,7 +229,7 @@ class ModelsTest {
     }
 
     @Test
-    fun `UEAsset_equality_basedOnId() {
+    fun `UEAsset equality basedOnId`() {
         val asset1 = UEAsset(
             id = "sameId",
             name = "Name1",
@@ -251,7 +251,7 @@ class ModelsTest {
     }
 
     @Test
-    fun `UEAsset_copy_modifiesCorrectly() {
+    fun `UEAsset copy modifiesCorrectly`() {
         val original = UEAsset(
             id = "original",
             name = "Original",
@@ -271,7 +271,7 @@ class ModelsTest {
     // ========== DependencyNode 数据类测试 ==========
 
     @Test
-    fun `DependencyNode_defaultDepth_isZero() {
+    fun `DependencyNode defaultDepth isZero`() {
         val node = DependencyNode(
             assetId = "test",
             assetName = "Test",
@@ -283,7 +283,7 @@ class ModelsTest {
     }
 
     @Test
-    fun `DependencyNode_withDepth_storesCorrectly() {
+    fun `DependencyNode withDepth storesCorrectly`() {
         val node = DependencyNode(
             assetId = "test",
             assetName = "Test",
@@ -298,7 +298,7 @@ class ModelsTest {
     // ========== AnalysisReport 数据类测试 ==========
 
     @Test
-    fun `AnalysisReport_defaultGeneratedAt_isCurrentTime() {
+    fun `AnalysisReport defaultGeneratedAt isCurrentTime`() {
         val before = System.currentTimeMillis()
         val report = AnalysisReport(
             projectPath = "/path",
@@ -317,7 +317,7 @@ class ModelsTest {
     }
 
     @Test
-    fun `AnalysisReport_defaultHealthScore_isZero() {
+    fun `AnalysisReport defaultHealthScore isZero`() {
         val report = AnalysisReport(
             projectPath = "/path",
             projectName = "Project",
@@ -334,7 +334,7 @@ class ModelsTest {
     }
 
     @Test
-    fun `AnalysisReport_defaultCircularDependencies_isEmpty() {
+    fun `AnalysisReport defaultCircularDependencies isEmpty`() {
         val report = AnalysisReport(
             projectPath = "/path",
             projectName = "Project",
@@ -353,7 +353,7 @@ class ModelsTest {
     // ========== ScanResult 数据类测试 ==========
 
     @Test
-    fun `ScanResult_defaultScanTime_isCurrentTime() {
+    fun `ScanResult defaultScanTime isCurrentTime`() {
         val before = System.currentTimeMillis()
         val result = ScanResult(
             projectPath = "/path",

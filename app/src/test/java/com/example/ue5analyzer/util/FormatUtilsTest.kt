@@ -12,55 +12,55 @@ class FormatUtilsTest {
     // ========== formatFileSize 测试 ==========
 
     @Test
-    fun `formatFileSize_zeroBytes_returnsCorrectFormat() {
+    fun `formatFileSize zeroBytes returnsCorrectFormat`() {
         val result = FormatUtils.formatFileSize(0)
         assertEquals("0 B", result)
     }
 
     @Test
-    fun `formatFileSize_lessThan1024Bytes_returnsBytes() {
+    fun `formatFileSize lessThan1024Bytes returnsBytes`() {
         val result = FormatUtils.formatFileSize(512)
         assertEquals("512 B", result)
     }
 
     @Test
-    fun `formatFileSize_exactly1024Bytes_returnsKB() {
+    fun `formatFileSize exactly1024Bytes returnsKB`() {
         val result = FormatUtils.formatFileSize(1024)
         assertEquals("1 KB", result)
     }
 
     @Test
-    fun `formatFileSize_1536Bytes_returnsCorrectKB() {
+    fun `formatFileSize 1536Bytes returnsCorrectKB`() {
         val result = FormatUtils.formatFileSize(1536)
         assertEquals("1 KB", result)
     }
 
     @Test
-    fun `formatFileSize_1048576Bytes_returnsMB() {
+    fun `formatFileSize 1048576Bytes returnsMB`() {
         val result = FormatUtils.formatFileSize(1048576)
         assertEquals("1.0 MB", result)
     }
 
     @Test
-    fun `formatFileSize_1572864Bytes_returnsCorrectMB() {
+    fun `formatFileSize 1572864Bytes returnsCorrectMB`() {
         val result = FormatUtils.formatFileSize(1572864)
         assertEquals("1.5 MB", result)
     }
 
     @Test
-    fun `formatFileSize_1073741824Bytes_returnsGB() {
+    fun `formatFileSize 1073741824Bytes returnsGB`() {
         val result = FormatUtils.formatFileSize(1073741824)
         assertEquals("1.0 GB", result)
     }
 
     @Test
-    fun `formatFileSize_largeFile_returnsGB() {
+    fun `formatFileSize largeFile returnsGB`() {
         val result = FormatUtils.formatFileSize(5368709120L) // 5 GB
         assertEquals("5.0 GB", result)
     }
 
     @Test
-    fun `formatFileSize_boundaryAtKB_MB_border() {
+    fun `formatFileSize boundaryAtKB MB border`() {
         // 边界值: 1023 B -> B 格式
         assertEquals("1023 B", FormatUtils.formatFileSize(1023))
         // 边界值: 1024 B -> KB 格式
@@ -68,7 +68,7 @@ class FormatUtilsTest {
     }
 
     @Test
-    fun `formatFileSize_boundaryAtMB_GB_border() {
+    fun `formatFileSize boundaryAtMB GB border`() {
         // 边界值: 1048575 B -> KB 格式
         assertEquals("1024.0 KB", FormatUtils.formatFileSize(1048575))
         // 边界值: 1048576 B -> MB 格式
@@ -76,7 +76,7 @@ class FormatUtilsTest {
     }
 
     @Test
-    fun `formatFileSize_boundaryAtGB_border() {
+    fun `formatFileSize boundaryAtGB border`() {
         // 边界值: 1073741823 B -> MB 格式
         assertEquals("1023.0 MB", FormatUtils.formatFileSize(1073741823))
         // 边界值: 1073741824 B -> GB 格式
@@ -84,7 +84,7 @@ class FormatUtilsTest {
     }
 
     @Test
-    fun `formatFileSize_negativeValue_handled() {
+    fun `formatFileSize negativeValue handled`() {
         // 测试负数（可能不应该出现，但测试边界情况）
         val result = FormatUtils.formatFileSize(-100)
         assertEquals("-100 B", result)
@@ -93,7 +93,7 @@ class FormatUtilsTest {
     // ========== formatTimestamp 测试 ==========
 
     @Test
-    fun `formatTimestamp_defaultPattern_returnsCorrectFormat() {
+    fun `formatTimestamp defaultPattern returnsCorrectFormat`() {
         val timestamp = 1704067200000L // 2024-01-01 00:00:00 UTC
         
         val result = FormatUtils.formatTimestamp(timestamp)
@@ -103,7 +103,7 @@ class FormatUtilsTest {
     }
 
     @Test
-    fun `formatTimestamp_customPattern_returnsCorrectFormat() {
+    fun `formatTimestamp customPattern returnsCorrectFormat`() {
         val timestamp = 1704067200000L
         
         val result = FormatUtils.formatTimestamp(timestamp, "yyyy/MM/dd")
@@ -113,7 +113,7 @@ class FormatUtilsTest {
     }
 
     @Test
-    fun `formatTimestamp_dateOnlyPattern() {
+    fun `formatTimestamp dateOnlyPattern`() {
         val timestamp = 1704067200000L
         
         val result = FormatUtils.formatTimestamp(timestamp, "yyyy-MM-dd")
@@ -122,7 +122,7 @@ class FormatUtilsTest {
     }
 
     @Test
-    fun `formatTimestamp_timeOnlyPattern() {
+    fun `formatTimestamp timeOnlyPattern`() {
         val timestamp = 1704067200000L
         
         val result = FormatUtils.formatTimestamp(timestamp, "HH:mm:ss")
@@ -131,7 +131,7 @@ class FormatUtilsTest {
     }
 
     @Test
-    fun `formatTimestamp_differentTimestamps_differentResults() {
+    fun `formatTimestamp differentTimestamps differentResults`() {
         val timestamp1 = 1704067200000L // 2024-01-01
         val timestamp2 = 1704153600000L // 2024-01-02
         
@@ -142,7 +142,7 @@ class FormatUtilsTest {
     }
 
     @Test
-    fun `formatTimestamp_zeroTimestamp_handled() {
+    fun `formatTimestamp zeroTimestamp handled`() {
         val result = FormatUtils.formatTimestamp(0)
         
         assertNotNull(result)
@@ -150,7 +150,7 @@ class FormatUtilsTest {
     }
 
     @Test
-    fun `formatTimestamp_negativeTimestamp_handled() {
+    fun `formatTimestamp negativeTimestamp handled`() {
         val result = FormatUtils.formatTimestamp(-1)
         
         assertNotNull(result)
@@ -160,7 +160,7 @@ class FormatUtilsTest {
     // ========== formatRelativeTime 测试 ==========
 
     @Test
-    fun `formatRelativeTime_justNow_returnsJustNow() {
+    fun `formatRelativeTime justNow returnsJustNow`() {
         val now = System.currentTimeMillis()
         val result = FormatUtils.formatRelativeTime(now)
         
@@ -168,7 +168,7 @@ class FormatUtilsTest {
     }
 
     @Test
-    fun `formatRelativeTime_fewMinutesAgo_returnsMinutes() {
+    fun `formatRelativeTime fewMinutesAgo returnsMinutes`() {
         val fiveMinutesAgo = System.currentTimeMillis() - (5 * 60 * 1000)
         val result = FormatUtils.formatRelativeTime(fiveMinutesAgo)
         
@@ -176,7 +176,7 @@ class FormatUtilsTest {
     }
 
     @Test
-    fun `formatRelativeTime_oneHourAgo_returnsHours() {
+    fun `formatRelativeTime oneHourAgo returnsHours`() {
         val oneHourAgo = System.currentTimeMillis() - (1 * 60 * 60 * 1000)
         val result = FormatUtils.formatRelativeTime(oneHourAgo)
         
@@ -184,7 +184,7 @@ class FormatUtilsTest {
     }
 
     @Test
-    fun `formatRelativeTime_multipleHoursAgo_returnsHours() {
+    fun `formatRelativeTime multipleHoursAgo returnsHours`() {
         val threeHoursAgo = System.currentTimeMillis() - (3 * 60 * 60 * 1000)
         val result = FormatUtils.formatRelativeTime(threeHoursAgo)
         
@@ -192,7 +192,7 @@ class FormatUtilsTest {
     }
 
     @Test
-    fun `formatRelativeTime_oneDayAgo_returnsDays() {
+    fun `formatRelativeTime oneDayAgo returnsDays`() {
         val oneDayAgo = System.currentTimeMillis() - (1 * 24 * 60 * 60 * 1000)
         val result = FormatUtils.formatRelativeTime(oneDayAgo)
         
@@ -200,7 +200,7 @@ class FormatUtilsTest {
     }
 
     @Test
-    fun `formatRelativeTime_multipleDaysAgo_returnsDays() {
+    fun `formatRelativeTime multipleDaysAgo returnsDays`() {
         val fiveDaysAgo = System.currentTimeMillis() - (5 * 24 * 60 * 60 * 1000)
         val result = FormatUtils.formatRelativeTime(fiveDaysAgo)
         
@@ -208,7 +208,7 @@ class FormatUtilsTest {
     }
 
     @Test
-    fun `formatRelativeTime_oneWeekAgo_returnsDate() {
+    fun `formatRelativeTime oneWeekAgo returnsDate`() {
         val oneWeekAgo = System.currentTimeMillis() - (7 * 24 * 60 * 60 * 1000)
         val result = FormatUtils.formatRelativeTime(oneWeekAgo)
         
@@ -217,7 +217,7 @@ class FormatUtilsTest {
     }
 
     @Test
-    fun `formatRelativeTime_longAgo_returnsDate() {
+    fun `formatRelativeTime longAgo returnsDate`() {
         val oneMonthAgo = System.currentTimeMillis() - (30L * 24 * 60 * 60 * 1000)
         val result = FormatUtils.formatRelativeTime(oneMonthAgo)
         

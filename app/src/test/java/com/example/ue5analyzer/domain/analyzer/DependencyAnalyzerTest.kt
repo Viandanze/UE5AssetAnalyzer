@@ -14,7 +14,7 @@ class DependencyAnalyzerTest {
     // ========== findCircularDependencies 测试 ==========
 
     @Test
-    fun `findCircularDependencies_noCycles_returnsEmptyList() {
+    fun `findCircularDependencies noCycles returnsEmptyList`() {
         val assets = listOf(
             createAsset("A", dependencies = listOf("B")),
             createAsset("B", dependencies = listOf("C")),
@@ -27,7 +27,7 @@ class DependencyAnalyzerTest {
     }
 
     @Test
-    fun `findCircularDependencies_simpleCycle_A_to_B_to_A_detectsCycle() {
+    fun `findCircularDependencies simpleCycle A to B to A detectsCycle`() {
         val assets = listOf(
             createAsset("A", dependencies = listOf("B")),
             createAsset("B", dependencies = listOf("A"))
@@ -42,7 +42,7 @@ class DependencyAnalyzerTest {
     }
 
     @Test
-    fun `findCircularDependencies_triangularCycle_A_to_B_to_C_to_A_detectsCycle() {
+    fun `findCircularDependencies triangularCycle A to B to C to A detectsCycle`() {
         val assets = listOf(
             createAsset("A", dependencies = listOf("B")),
             createAsset("B", dependencies = listOf("C")),
@@ -57,7 +57,7 @@ class DependencyAnalyzerTest {
     }
 
     @Test
-    fun `findCircularDependencies_multipleIndependentCycles_detectsAllCycles() {
+    fun `findCircularDependencies multipleIndependentCycles detectsAllCycles`() {
         val assets = listOf(
             // Cycle 1: A -> B -> A
             createAsset("A", dependencies = listOf("B")),
@@ -75,7 +75,7 @@ class DependencyAnalyzerTest {
     }
 
     @Test
-    fun `findCircularDependencies_selfLoop_A_to_A_detectsCycle() {
+    fun `findCircularDependencies selfLoop A to A detectsCycle`() {
         val assets = listOf(
             createAsset("A", dependencies = listOf("A"))
         )
@@ -87,7 +87,7 @@ class DependencyAnalyzerTest {
     }
 
     @Test
-    fun `findCircularDependencies_deepChainWithoutCycle_noStackOverflow() {
+    fun `findCircularDependencies deepChainWithoutCycle noStackOverflow`() {
         // 创建50+层深度的依赖链，无循环
         val assets = (1..60).map { i ->
             val deps = if (i < 60) listOf("asset_$i+1") else emptyList()
@@ -100,7 +100,7 @@ class DependencyAnalyzerTest {
     }
 
     @Test
-    fun `findCircularDependencies_complexGraphWithMultipleCycles_detectsAllCycles() {
+    fun `findCircularDependencies complexGraphWithMultipleCycles detectsAllCycles`() {
         val assets = listOf(
             // Long chain with cycle at end
             createAsset("A", dependencies = listOf("B")),
@@ -118,13 +118,13 @@ class DependencyAnalyzerTest {
     }
 
     @Test
-    fun `findCircularDependencies_emptyList_returnsEmptyList() {
+    fun `findCircularDependencies emptyList returnsEmptyList`() {
         val result = analyzer.findCircularDependencies(emptyList())
         assertTrue(result.isEmpty())
     }
 
     @Test
-    fun `findCircularDependencies_singleAssetNoDeps_returnsEmptyList() {
+    fun `findCircularDependencies singleAssetNoDeps returnsEmptyList`() {
         val assets = listOf(
             createAsset("A", dependencies = emptyList())
         )
@@ -137,13 +137,13 @@ class DependencyAnalyzerTest {
     // ========== buildDependencyGraph 测试 ==========
 
     @Test
-    fun `buildDependencyGraph_emptyList_returnsEmptyMap() {
+    fun `buildDependencyGraph emptyList returnsEmptyMap`() {
         val result = analyzer.buildDependencyGraph(emptyList())
         assertTrue(result.isEmpty())
     }
 
     @Test
-    fun `buildDependencyGraph_singleLevel_reportsLevelAsset() {
+    fun `buildDependencyGraph singleLevel reportsLevelAsset`() {
         val assets = listOf(
             createAsset("Level1", type = AssetType.LEVEL),
             createAsset("Texture1", type = AssetType.TEXTURE, dependencies = listOf("Level1"))
@@ -156,7 +156,7 @@ class DependencyAnalyzerTest {
     }
 
     @Test
-    fun `buildDependencyGraph_levelsWithDependencies_includesDependencies() {
+    fun `buildDependencyGraph levelsWithDependencies includesDependencies`() {
         val assets = listOf(
             createAsset("Level1", type = AssetType.LEVEL),
             createAsset("Mesh1", type = AssetType.STATIC_MESH, dependencies = listOf("Level1")),
@@ -171,7 +171,7 @@ class DependencyAnalyzerTest {
     }
 
     @Test
-    fun `buildDependencyGraph_noLevels_returnsEmptyOrMinimalGraph() {
+    fun `buildDependencyGraph noLevels returnsEmptyOrMinimalGraph`() {
         val assets = listOf(
             createAsset("Mesh1", type = AssetType.STATIC_MESH, dependencies = emptyList()),
             createAsset("Texture1", type = AssetType.TEXTURE, dependencies = listOf("Mesh1"))
@@ -187,7 +187,7 @@ class DependencyAnalyzerTest {
     }
 
     @Test
-    fun `buildDependencyGraph_correctDepthCalculation() {
+    fun `buildDependencyGraph correctDepthCalculation`() {
         val assets = listOf(
             createAsset("Level1", type = AssetType.LEVEL),
             createAsset("Mesh1", type = AssetType.STATIC_MESH, dependencies = listOf("Level1")),
@@ -209,7 +209,7 @@ class DependencyAnalyzerTest {
     }
 
     @Test
-    fun `buildDependencyGraph_preservesAssetInfo() {
+    fun `buildDependencyGraph preservesAssetInfo`() {
         val assets = listOf(
             createAsset("BP_Test", type = AssetType.BLUEPRINT, dependencies = listOf("SM_Test")),
             createAsset("SM_Test", type = AssetType.STATIC_MESH, dependencies = emptyList())

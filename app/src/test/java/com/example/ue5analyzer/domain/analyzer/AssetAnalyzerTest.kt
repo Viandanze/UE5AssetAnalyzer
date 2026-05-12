@@ -14,13 +14,13 @@ class AssetAnalyzerTest {
     // ========== calculateHealthScore 测试 ==========
 
     @Test
-    fun `calculateHealthScore_emptyList_returnsFullScore() {
+    fun `calculateHealthScore emptyList returnsFullScore`() {
         val result = analyzer.calculateHealthScore(emptyList())
         assertEquals(100, result)
     }
 
     @Test
-    fun `calculateHealthScore_allHealthyAssets_returnsFullScore() {
+    fun `calculateHealthScore allHealthyAssets returnsFullScore`() {
         val assets = listOf(
             createAsset("asset1", isOrphan = false, refCount = 5),
             createAsset("asset2", isOrphan = false, refCount = 3),
@@ -32,7 +32,7 @@ class AssetAnalyzerTest {
     }
 
     @Test
-    fun `calculateHealthScore_allOrphanAssets_returnsLowScore() {
+    fun `calculateHealthScore allOrphanAssets returnsLowScore`() {
         val assets = listOf(
             createAsset("orphan1", isOrphan = true, refCount = 0),
             createAsset("orphan2", isOrphan = true, refCount = 0),
@@ -45,7 +45,7 @@ class AssetAnalyzerTest {
     }
 
     @Test
-    fun `calculateHealthScore_partialOrphanAssets_returnsMediumScore() {
+    fun `calculateHealthScore partialOrphanAssets returnsMediumScore`() {
         val assets = listOf(
             createAsset("healthy1", isOrphan = false, refCount = 5),
             createAsset("healthy2", isOrphan = false, refCount = 3),
@@ -58,7 +58,7 @@ class AssetAnalyzerTest {
     }
 
     @Test
-    fun `calculateHealthScore_mixedScenarioWithHighReferences_returnsHigherScore() {
+    fun `calculateHealthScore mixedScenarioWithHighReferences returnsHigherScore`() {
         val assets = listOf(
             createAsset("orphan1", isOrphan = true, refCount = 0),
             createAsset("healthy1", isOrphan = false, refCount = 10),
@@ -72,7 +72,7 @@ class AssetAnalyzerTest {
     }
 
     @Test
-    fun `calculateHealthScore_singleHealthyAsset_returnsFullScore() {
+    fun `calculateHealthScore singleHealthyAsset returnsFullScore`() {
         val assets = listOf(
             createAsset("singleAsset", isOrphan = false, refCount = 5)
         )
@@ -82,7 +82,7 @@ class AssetAnalyzerTest {
     }
 
     @Test
-    fun `calculateHealthScore_singleOrphanAsset_returnsZeroOrphanScore() {
+    fun `calculateHealthScore singleOrphanAsset returnsZeroOrphanScore`() {
         val assets = listOf(
             createAsset("orphanAsset", isOrphan = true, refCount = 0)
         )
@@ -95,7 +95,7 @@ class AssetAnalyzerTest {
     // ========== 孤立资源识别逻辑测试 ==========
 
     @Test
-    fun `generateReport_identifiesOrphanAssets_correctly() {
+    fun `generateReport identifiesOrphanAssets correctly`() {
         val assets = listOf(
             createAsset("level1", type = AssetType.LEVEL, isOrphan = false, refCount = 0),
             createAsset("orphan1", isOrphan = true, refCount = 0),
@@ -111,7 +111,7 @@ class AssetAnalyzerTest {
     }
 
     @Test
-    fun `generateReport_emptyProject_returnsZeroOrphans() {
+    fun `generateReport emptyProject returnsZeroOrphans`() {
         val report = analyzer.generateReport("/path", "EmptyProject", emptyList())
         
         assertEquals(0, report.orphanCount)
@@ -119,7 +119,7 @@ class AssetAnalyzerTest {
     }
 
     @Test
-    fun `generateReport_calculatesHealthScore_inReport() {
+    fun `generateReport calculatesHealthScore inReport`() {
         val assets = listOf(
             createAsset("healthy1", isOrphan = false, refCount = 5),
             createAsset("healthy2", isOrphan = false, refCount = 3)
@@ -131,7 +131,7 @@ class AssetAnalyzerTest {
     }
 
     @Test
-    fun `generateReport_calculatesTotalSize_correctly() {
+    fun `generateReport calculatesTotalSize correctly`() {
         val assets = listOf(
             createAsset("small", size = 1024),
             createAsset("medium", size = 10240),
