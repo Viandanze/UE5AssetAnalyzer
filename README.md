@@ -1,45 +1,51 @@
 # UE5 Asset Analyzer
 
-UE5 项目资源分析工具，Android 端。扫描 .uasset 文件，找孤立资源，理依赖关系，算项目健康度。
+An Android tool for scanning and analyzing Unreal Engine 5 project assets. Parses `.uasset` files, detects orphaned resources, maps dependency chains, and calculates project health scores.
 
-做这个的起因很简单——UE5 项目做大之后，资源管理就是一坨，哪些没人用、哪些互相绕、哪些纯占空间，手动排查根本不现实。所以写了个工具把这事儿自动化了。
+Built because UE5 projects get messy fast — orphaned assets, circular dependencies, bloated content directories — manual cleanup is impractical. This automates it.
 
-## 功能
+## Features
 
-- 扫描 UE5 项目目录下的 .uasset 文件，解析文件头提取元信息
-- 按类型分类资源（蓝图、静态网格、材质、贴图、音效等 16 种）
-- 孤立资源检测：零引用的、单引用的，按风险等级标出来
-- 依赖关系图分析：谁依赖谁，引用链有多深
-- 循环依赖检测：找出互相引用的死循环
-- 项目健康度评分：综合孤立率、循环依赖等算一个分数
-- 历史扫描记录：Room 本地存储，下次打开还能看
+- Scan UE5 project directories, parse `.uasset` file headers for metadata
+- Classify assets by type (Blueprint, Static Mesh, Material, Texture, Sound, etc. — 16 types)
+- Orphan detection: flag zero-reference and single-reference assets by risk level
+- Dependency graph: who depends on whom, how deep the chain goes
+- Circular dependency detection: find mutually referencing loops
+- Project health score: composite metric from orphan rate, circular deps, and more
+- Scan history: persisted locally via Room, survives app restarts
+- Custom scan rules: configure ignored directories/extensions, file size limits
+- Dark mode: system / light / dark, persisted preference
+- Markdown report export with enhanced rendering (code blocks, tables, nested lists)
 
-## 技术栈
+## Tech Stack
 
-Kotlin / Jetpack Compose / Material3 / Room / Coroutines + Flow / Navigation Compose
+Kotlin / Jetpack Compose / Material3 / Room / Coroutines + Flow / Navigation Compose / DataStore / Ktor
 
-架构走的 MVVM，数据层、业务层、UI 层分开。
+MVVM architecture — data, domain, and UI layers separated.
 
-## 项目结构
+## Project Structure
 
 ```
 app/src/main/kotlin/com/example/ue5analyzer/
 ├── data/
-│   ├── database/        # Room 数据库，ProjectEntity 持久化
-│   └── parser/          # .uasset 二进制解析器
+│   ├── database/        # Room database, ProjectEntity persistence
+│   ├── filter/          # Asset filtering logic
+│   ├── manager/         # ScanConfigManager, ThemePreferencesManager
+│   ├── parser/          # .uasset binary parser
+│   └── selection/       # Batch selection state management
 ├── domain/
-│   ├── analyzer/        # 依赖分析、健康度计算
-│   └── report/          # Markdown 报告生成
-├── model/               # 数据类定义
+│   ├── analyzer/        # Dependency analysis, health scoring
+│   └── report/          # Markdown report generation
+├── model/               # Data classes and enums
 └── ui/
-    ├── components/      # 通用图表组件（饼图、柱状图、环形进度条）
-    ├── navigation/      # 导航路由定义
-    ├── screens/         # 各页面 Composable
-    ├── theme/           # Material3 主题
+    ├── components/      # Reusable chart components (pie, bar, ring progress)
+    ├── navigation/      # Navigation route definitions
+    ├── screens/         # Screen composables
+    ├── theme/           # Material3 theme
     └── viewmodel/       # ViewModel + StateFlow
 ```
 
-## 开发环境
+## Development
 
 - Android Studio Hedgehog+
 - AGP 8.2, Kotlin 1.9, Compose BOM 2023.10.01
