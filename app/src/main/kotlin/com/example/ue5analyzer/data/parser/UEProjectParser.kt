@@ -255,23 +255,25 @@ class UEProjectParser(private val context: Context) {
      * 扫描 UE5 项目
      * @param projectUri 项目 URI
      * @param onProgress 进度回调：(已扫描数量, 总数, 当前文件名)
+     * @param scanConfig 扫描配置，用于过滤目录和文件
      */
     suspend fun scanProject(
         projectUri: Uri, 
-        onProgress: (scannedCount: Int, totalCount: Int, currentPath: String) -> Unit = { _, _, _ -> }
+        onProgress: (scannedCount: Int, totalCount: Int, currentPath: String) -> Unit = { _, _, _ -> },
+        scanConfig: ScanConfig = ScanConfig.DEFAULT
     ): ScanResult = withContext(Dispatchers.IO) {
         val assets = mutableListOf<UEAsset>()
         
         // 1. 解析项目名称
         val projectName = getProjectName(projectUri)
         
-        // 2. 先快扫计数
-        val totalFiles = countAssetFiles(projectUri)
+        // 2. 先快扫计数（应用配置）
+        val totalFiles = countAssetFiles(projectUri, scanConfig)
         
         // 3. 扫描 Content 目录，传入协程上下文用于取消检查
         val contentUri = findContentDirectory(projectUri)
         if (contentUri != null) {
-            scanDirectory(contentUri, assets, onProgress, totalFiles, coroutineContext)
+            scanDirectory(contentUri, assets, onProgress, totalFiles, coroutineContext, scanConfig)
         }
         
         // 4. 构建依赖关系
@@ -298,12 +300,13 @@ class UEProjectParser(private val context: Context) {
     
     /**
      * 快速扫描统计资源文件数量
+     * @param scanConfig 扫描配置
      */
-    private fun countAssetFiles(projectUri: Uri): Int {
+    private fun countAssetFiles(projectUri: Uri, scanConfig: ScanConfig): Int {
         return try {
             val contentUri = findContentDirectory(projectUri)
             if (contentUri != null) {
-                countFilesInDirectory(contentUri)
+                countFilesInDirectory(contentUri, scanConfig)
             } else {
                 0
             }
@@ -314,16 +317,28 @@ class UEProjectParser(private val context: Context) {
     
     /**
      * 递归统计目录中的资源文件数量
+     * @param scanConfig 扫描配置
      */
-    private fun countFilesInDirectory(directoryUri: Uri): Int {
+    private fun countFilesInDirectory(directoryUri: Uri, scanConfig: ScanConfig): Int {
         var count = 0
         try {
             val docFile = DocumentFile.fromTreeUri(context, directoryUri) ?: return 0
             docFile.listFiles().forEach { file ->
                 if (file.isDirectory) {
-                    count += countFilesInDirectory(file.uri)
+                    // 跳过忽略的目录
+                    val dirName = file.name ?: ""
+                    if (!scanConfig.ignoredDirectories.contains(dirName)) {
+                        count += countFilesInDirectory(file.uri, scanConfig)
+                    }
                 } else if (file.name?.endsWith(".uasset") == true || file.name?.endsWith(".umap") == true) {
-                    count++
+                    // 检查文件扩展名
+                    val ext = file.name?.substringAfterLast(".") ?: ""
+                    if (!scanConfig.ignoredExtensions.contains(ext)) {
+                        // 检查文件大小限制
+                        if (scanConfig.maxFileSize <= 0 || file.length() <= scanConfig.maxFileSize) {
+                            count++
+                        }
+                    }
                 }
             }
         } catch (e: Exception) {
@@ -367,13 +382,15 @@ class UEProjectParser(private val context: Context) {
      * 递归扫描目录 - 使用 DocumentFile API + 进度回调
      * @param totalFiles 总文件数（用于进度百分比计算）
      * @param coroutineContext 协程上下文，用于检查取消状态
+     * @param scanConfig 扫描配置
      */
     private suspend fun scanDirectory(
         directoryUri: Uri, 
         assets: MutableList<UEAsset>,
         onProgress: (Int, Int, String) -> Unit,
         totalFiles: Int,
-        coroutineContext: kotlin.coroutines.CoroutineContext
+        coroutineContext: kotlin.coroutines.CoroutineContext,
+        scanConfig: ScanConfig = ScanConfig.DEFAULT
     ) {
         // 检查协程是否已取消
         coroutineContext.ensureActive()
@@ -386,9 +403,20 @@ class UEProjectParser(private val context: Context) {
                 coroutineContext.ensureActive()
                 
                 if (file.isDirectory) {
-                    // 递归扫描子目录
-                    scanDirectory(file.uri, assets, onProgress, totalFiles, coroutineContext)
+                    // 跳过忽略的目录
+                    val dirName = file.name ?: ""
+                    if (!scanConfig.ignoredDirectories.contains(dirName)) {
+                        // 递归扫描子目录
+                        scanDirectory(file.uri, assets, onProgress, totalFiles, coroutineContext, scanConfig)
+                    }
                 } else if (file.name?.endsWith(".uasset") == true) {
+                    // 检查文件扩展名
+                    val ext = file.name?.substringAfterLast(".") ?: ""
+                    if (scanConfig.ignoredExtensions.contains(ext)) return@forEach
+                    
+                    // 检查文件大小限制
+                    if (scanConfig.maxFileSize > 0 && file.length() > scanConfig.maxFileSize) return@forEach
+                    
                     // 解析 uasset 文件
                     val asset = parseUasset(file.name!!, file.uri.toString(), file.length(), file.uri)
                     assets.add(asset)
@@ -396,6 +424,13 @@ class UEProjectParser(private val context: Context) {
                     // 进度回调
                     onProgress(assets.size, totalFiles, file.name!!)
                 } else if (file.name?.endsWith(".umap") == true) {
+                    // 检查文件扩展名
+                    val ext = file.name?.substringAfterLast(".") ?: ""
+                    if (scanConfig.ignoredExtensions.contains(ext)) return@forEach
+                    
+                    // 检查文件大小限制
+                    if (scanConfig.maxFileSize > 0 && file.length() > scanConfig.maxFileSize) return@forEach
+                    
                     // .umap 文件是关卡资源
                     val assetName = file.name!!.removeSuffix(".umap")
                     val asset = UEAsset(

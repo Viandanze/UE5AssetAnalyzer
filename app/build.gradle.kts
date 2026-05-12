@@ -15,8 +15,8 @@ android {
         // DocumentFile API 需要 API 26+， SAF 权限持久化需要 API 30+
         minSdk = 26
         targetSdk = 34
-        versionCode = 2
-        versionName = "0.2.1"
+        versionCode = 5
+        versionName = "0.5"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables {

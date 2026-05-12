@@ -94,6 +94,9 @@ fun DependencyGraph(
     // 点击检测
     var lastTappedNodeId by remember { mutableStateOf<String?>(null) }
     
+    // 文本测量器（在 Canvas 外部声明）
+    val textMeasurer = rememberTextMeasurer()
+    
     Box(
         modifier = modifier
             .fillMaxSize()
@@ -192,7 +195,6 @@ fun DependencyGraph(
                         translationY = offset.y
                     }
             ) {
-                val textMeasurer = rememberTextMeasurer()
                 val textStyle = TextStyle(
                     fontSize = 10.sp,
                     color = Color.Black

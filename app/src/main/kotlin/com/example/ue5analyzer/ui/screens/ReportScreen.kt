@@ -1,5 +1,6 @@
 package com.example.ue5analyzer.ui.screens
 
+import android.content.Intent
 import android.net.Uri
 import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -48,13 +49,16 @@ fun ReportScreen(
     // Snackbar 状态
     val snackbarHostState = remember { SnackbarHostState() }
     
+    // 协程作用域
+    val scope = rememberCoroutineScope()
+    
     // 报告导出
     val reportSaver = rememberLauncherForActivityResult(
         ActivityResultContracts.CreateDocument("text/markdown")
     ) { uri: Uri? ->
         uri?.let { 
             val success = viewModel.exportReport(it)
-            viewModelScope.launch {
+            scope.launch {
                 if (success) {
                     snackbarHostState.showSnackbar(
                         message = "报告已导出",
@@ -69,9 +73,6 @@ fun ReportScreen(
             }
         }
     }
-    
-    // 协程作用域
-    val scope = rememberCoroutineScope()
     
     Scaffold(
         topBar = {
@@ -210,7 +211,7 @@ private fun ReportContent(
         Divider()
         
         // Markdown 内容
-        MarkdownContent(
+        EnhancedMarkdownContent(
             content = reportContent,
             modifier = Modifier.weight(1f)
         )
@@ -218,16 +219,13 @@ private fun ReportContent(
 }
 
 /**
- * 简单 Markdown 渲染器
+ * 增强的 Markdown 内容渲染器
  */
 @Composable
-private fun MarkdownContent(
+private fun EnhancedMarkdownContent(
     content: String,
     modifier: Modifier = Modifier
 ) {
-    val scrollState = rememberScrollState()
-    val lines = content.lines()
-    
     Card(
         modifier = modifier
             .fillMaxWidth()
@@ -239,37 +237,39 @@ private fun MarkdownContent(
         LazyColumn(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(16.dp)
-                .verticalScroll(scrollState),
+                .padding(16.dp),
             state = rememberLazyListState(),
-            verticalArrangement = Arrangement.spacedBy(4.dp)
+            verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
             // 解析并渲染 Markdown
-            val parsedContent = parseMarkdownContent(content)
+            val parsedContent = parseEnhancedMarkdownContent(content)
             
             items(parsedContent) { element ->
-                RenderMarkdownElement(element)
+                RenderEnhancedMarkdownElement(element)
             }
         }
     }
 }
 
 /**
- * Markdown 元素
+ * Markdown 元素 - 增强版
  */
 sealed class MarkdownElement {
     data class Heading(val level: Int, val text: String) : MarkdownElement()
-    data class Paragraph(val text: String) : MarkdownElement()
+    data class Paragraph(val text: String, val inlineStyles: Boolean = false) : MarkdownElement()
     data class Table(val headers: List<String>, val rows: List<List<String>>) : MarkdownElement()
     data class UnorderedList(val items: List<String>) : MarkdownElement()
+    data class NestedUnorderedList(val indent: Int, val items: List<String>) : MarkdownElement()
     data class Blockquote(val text: String) : MarkdownElement()
     data class HorizontalRule(val text: String = "") : MarkdownElement()
+    data class CodeBlock(val code: String, val language: String = "") : MarkdownElement()
 }
 
 /**
- * 解析 Markdown 内容为元素列表
+ * 解析 Markdown 内容为元素列表 - 增强版
+ * 支持：代码块、嵌套列表、加粗+斜体、链接
  */
-private fun parseMarkdownContent(content: String): List<MarkdownElement> {
+private fun parseEnhancedMarkdownContent(content: String): List<MarkdownElement> {
     val elements = mutableListOf<MarkdownElement>()
     val lines = content.lines()
     
@@ -278,6 +278,18 @@ private fun parseMarkdownContent(content: String): List<MarkdownElement> {
         val line = lines[i]
         
         when {
+            // 代码块开始
+            line.trim().startsWith("```") -> {
+                val language = line.trim().removePrefix("```")
+                val codeLines = mutableListOf<String>()
+                i++
+                while (i < lines.size && !lines[i].trim().startsWith("```")) {
+                    codeLines.add(lines[i])
+                    i++
+                }
+                elements.add(MarkdownElement.CodeBlock(codeLines.joinToString("\n"), language))
+            }
+            
             // 标题
             line.startsWith("# ") -> {
                 elements.add(MarkdownElement.Heading(1, line.removePrefix("# ")))
@@ -288,9 +300,12 @@ private fun parseMarkdownContent(content: String): List<MarkdownElement> {
             line.startsWith("### ") -> {
                 elements.add(MarkdownElement.Heading(3, line.removePrefix("### ")))
             }
+            line.startsWith("#### ") -> {
+                elements.add(MarkdownElement.Heading(4, line.removePrefix("#### ")))
+            }
             
             // 分隔线
-            line.startsWith("---") -> {
+            line.startsWith("---") || line.startsWith("***") || line.startsWith("___") -> {
                 elements.add(MarkdownElement.HorizontalRule())
             }
             
@@ -304,7 +319,7 @@ private fun parseMarkdownContent(content: String): List<MarkdownElement> {
                     }
                     i++
                 }
-                i-- // 回退一行，因为 for 循环会再加回来
+                i-- // 回退一行
                 
                 if (tableLines.size >= 2) {
                     val table = parseTable(tableLines)
@@ -319,7 +334,47 @@ private fun parseMarkdownContent(content: String): List<MarkdownElement> {
                 elements.add(MarkdownElement.Blockquote(line.removePrefix("> ")))
             }
             
-            // 列表项
+            // 嵌套列表 - 检测缩进的列表项
+            line.startsWith("  - ") || line.startsWith("\t- ") -> {
+                // 计算缩进级别
+                val indent = when {
+                    line.startsWith("  - ") -> 2
+                    line.startsWith("\t- ") -> 1
+                    else -> 0
+                }
+                val itemText = line.trim().removePrefix("- ")
+                val nestedItems = mutableListOf<String>()
+                nestedItems.add(itemText)
+                
+                // 继续收集同级别的嵌套项
+                while (i + 1 < lines.size) {
+                    val nextLine = lines[i + 1]
+                    val nextIndent = when {
+                        nextLine.startsWith("      - ") || nextLine.startsWith("\t\t- ") -> 3
+                        nextLine.startsWith("    - ") -> 2
+                        nextLine.startsWith("  - ") -> 1
+                        nextLine.startsWith("\t- ") -> 1
+                        nextLine.startsWith("- ") -> 0
+                        nextLine.isBlank() -> -1
+                        else -> -2
+                    }
+                    
+                    if (nextIndent == indent || (nextIndent > indent && nextLine.trim().startsWith("- "))) {
+                        i++
+                        if (nextLine.isNotBlank()) {
+                            nestedItems.add(nextLine.trim().removePrefix("- "))
+                        }
+                    } else {
+                        break
+                    }
+                }
+                
+                if (nestedItems.isNotEmpty() && nestedItems.any { it.isNotEmpty() }) {
+                    elements.add(MarkdownElement.NestedUnorderedList(indent, nestedItems.filter { it.isNotEmpty() }))
+                }
+            }
+            
+            // 普通列表项
             line.startsWith("- ") -> {
                 val listItems = mutableListOf<String>()
                 while (i < lines.size && lines[i].startsWith("- ")) {
@@ -330,9 +385,9 @@ private fun parseMarkdownContent(content: String): List<MarkdownElement> {
                 elements.add(MarkdownElement.UnorderedList(listItems))
             }
             
-            // 段落
+            // 段落（包含内联样式的文本）
             line.isNotBlank() -> {
-                elements.add(MarkdownElement.Paragraph(line))
+                elements.add(MarkdownElement.Paragraph(line, inlineStyles = true))
             }
             
             else -> {
@@ -349,226 +404,313 @@ private fun parseMarkdownContent(content: String): List<MarkdownElement> {
  * 解析表格
  */
 private fun parseTable(lines: List<String>): MarkdownElement.Table? {
-    if (lines.size < 2) return null
-    
-    val headers = lines[0].split("|").map { it.trim() }.filter { it.isNotEmpty() }
-    val rows = lines.drop(1).map { row ->
-        row.split("|").map { it.trim() }.filter { it.isNotEmpty() }
-    }
-    
-    return if (headers.isNotEmpty()) {
+    return try {
+        val headers = lines.first().split("|").filter { it.isNotBlank() }.map { it.trim() }
+        val rows = lines.drop(1).map { row ->
+            row.split("|").filter { it.isNotBlank() }.map { it.trim() }
+        }
         MarkdownElement.Table(headers, rows)
-    } else null
+    } catch (e: Exception) {
+        null
+    }
 }
 
 /**
- * 渲染单个 Markdown 元素
+ * 渲染增强的 Markdown 元素
  */
 @Composable
-private fun RenderMarkdownElement(element: MarkdownElement) {
+private fun RenderEnhancedMarkdownElement(element: MarkdownElement) {
     when (element) {
         is MarkdownElement.Heading -> {
-            Heading(element.level, element.text)
-        }
-        is MarkdownElement.Paragraph -> {
-            Paragraph(element.text)
-        }
-        is MarkdownElement.Table -> {
-            RenderTable(element.headers, element.rows)
-        }
-        is MarkdownElement.UnorderedList -> {
-            UnorderedList(element.items)
-        }
-        is MarkdownElement.Blockquote -> {
-            Blockquote(element.text)
-        }
-        is MarkdownElement.HorizontalRule -> {
-            Spacer(modifier = Modifier.height(8.dp))
-            Divider(
-                modifier = Modifier.padding(vertical = 8.dp),
-                color = MaterialTheme.colorScheme.outlineVariant
+            val style = when (element.level) {
+                1 -> MaterialTheme.typography.headlineMedium
+                2 -> MaterialTheme.typography.headlineSmall
+                3 -> MaterialTheme.typography.titleLarge
+                4 -> MaterialTheme.typography.titleMedium
+                else -> MaterialTheme.typography.titleMedium
+            }
+            
+            val fontWeight = when (element.level) {
+                1, 2 -> FontWeight.Bold
+                else -> FontWeight.SemiBold
+            }
+            
+            Text(
+                text = element.text,
+                style = style,
+                fontWeight = fontWeight,
+                color = MaterialTheme.colorScheme.onSurface
             )
-            Spacer(modifier = Modifier.height(8.dp))
         }
-    }
-}
-
-@Composable
-private fun Heading(level: Int, text: String) {
-    val style = when (level) {
-        1 -> MaterialTheme.typography.headlineLarge.copy(fontWeight = FontWeight.Bold)
-        2 -> MaterialTheme.typography.headlineMedium.copy(fontWeight = FontWeight.Bold)
-        3 -> MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold)
-        else -> MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold)
-    }
-    
-    val color = when (level) {
-        1 -> MaterialTheme.colorScheme.primary
-        2 -> MaterialTheme.colorScheme.onSurface
-        else -> MaterialTheme.colorScheme.onSurfaceVariant
-    }
-    
-    Spacer(modifier = Modifier.height(if (level <= 2) 12.dp else 8.dp))
-    Text(
-        text = parseInlineMarkdown(text),
-        style = style,
-        color = color
-    )
-    Spacer(modifier = Modifier.height(if (level <= 2) 8.dp else 4.dp))
-}
-
-@Composable
-private fun Paragraph(text: String) {
-    Text(
-        text = parseInlineMarkdown(text),
-        style = MaterialTheme.typography.bodyMedium,
-        color = MaterialTheme.colorScheme.onSurface
-    )
-}
-
-@Composable
-private fun RenderTable(headers: List<String>, rows: List<List<String>>) {
-    val headerColor = MaterialTheme.colorScheme.primary
-    val borderColor = MaterialTheme.colorScheme.outlineVariant
-    
-    Spacer(modifier = Modifier.height(8.dp))
-    
-    Card(
-        modifier = Modifier.fillMaxWidth(),
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surface
-        )
-    ) {
-        Column(modifier = Modifier.padding(8.dp)) {
-            // 表头
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .horizontalScroll(rememberScrollState())
-            ) {
-                headers.forEachIndexed { index, header ->
-                    Box(
-                        modifier = Modifier
-                            .width(120.dp)
-                            .border(
-                                width = 1.dp,
-                                color = borderColor
-                            )
-                            .padding(8.dp)
-                    ) {
+        
+        is MarkdownElement.Paragraph -> {
+            if (element.inlineStyles) {
+                Text(
+                    text = parseInlineStyles(element.text),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurface
+                )
+            } else {
+                Text(
+                    text = element.text,
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurface
+                )
+            }
+        }
+        
+        is MarkdownElement.CodeBlock -> {
+            CodeBlockCard(code = element.code, language = element.language)
+        }
+        
+        is MarkdownElement.Table -> {
+            MarkdownTable(headers = element.headers, rows = element.rows)
+        }
+        
+        is MarkdownElement.UnorderedList -> {
+            Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                element.items.forEach { item ->
+                    Row {
                         Text(
-                            text = header,
-                            style = MaterialTheme.typography.labelMedium,
-                            fontWeight = FontWeight.Bold,
-                            color = headerColor
+                            text = "•",
+                            style = MaterialTheme.typography.bodyMedium,
+                            modifier = Modifier.padding(end = 8.dp)
+                        )
+                        Text(
+                            text = parseInlineStyles(item),
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurface
                         )
                     }
                 }
             }
+        }
+        
+        is MarkdownElement.NestedUnorderedList -> {
+            Column(
+                verticalArrangement = Arrangement.spacedBy(2.dp),
+                modifier = Modifier.padding(start = (element.indent * 12).dp)
+            ) {
+                element.items.forEach { item ->
+                    Row {
+                        Text(
+                            text = "◦",
+                            style = MaterialTheme.typography.bodySmall,
+                            modifier = Modifier.padding(end = 8.dp)
+                        )
+                        Text(
+                            text = parseInlineStyles(item),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurface
+                        )
+                    }
+                }
+            }
+        }
+        
+        is MarkdownElement.Blockquote -> {
+            Card(
+                colors = CardDefaults.cardColors(
+                    containerColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.3f)
+                ),
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Text(
+                    text = element.text,
+                    style = MaterialTheme.typography.bodyMedium,
+                    fontStyle = FontStyle.Italic,
+                    color = MaterialTheme.colorScheme.onPrimaryContainer,
+                    modifier = Modifier.padding(12.dp)
+                )
+            }
+        }
+        
+        is MarkdownElement.HorizontalRule -> {
+            Divider(
+                modifier = Modifier.padding(vertical = 8.dp),
+                color = MaterialTheme.colorScheme.outlineVariant
+            )
+        }
+    }
+}
+
+/**
+ * 解析内联样式（加粗、斜体、链接）
+ */
+@Composable
+private fun parseInlineStyles(text: String): androidx.compose.ui.text.AnnotatedString {
+    val context = LocalContext.current
+    
+    return buildAnnotatedString {
+        var currentIndex = 0
+        val boldPattern = Regex("\\*\\*(.+?)\\*\\*")
+        val italicPattern = Regex("(?<!\\*)\\*(?!\\*)(.+?)(?<!\\*)\\*(?!\\*)")
+        val boldItalicPattern = Regex("\\*\\*(.+?)\\*\\*")
+        val linkPattern = Regex("\\[([^]]+)]\\(([^)]+)\\)")
+        
+        // 找到所有样式位置
+        val matches = mutableListOf<Pair<Int, MatchResult>>()
+        
+        boldPattern.findAll(text).forEach { matches.add(it.range.first to it) }
+        italicPattern.findAll(text).forEach { matches.add(it.range.first to it) }
+        linkPattern.findAll(text).forEach { matches.add(it.range.first to it) }
+        
+        // 按位置排序
+        matches.sortBy { it.first }
+        
+        var processedEnd = 0
+        matches.forEach { (start, match) ->
+            // 添加普通文本
+            if (start > processedEnd) {
+                append(text.substring(processedEnd, start))
+            }
+            
+            when {
+                // 加粗
+                text.substring(start).startsWith("**") -> {
+                    val endIndex = text.indexOf("**", start + 2)
+                    if (endIndex > start) {
+                        withStyle(SpanStyle(fontWeight = FontWeight.Bold)) {
+                            append(text.substring(start + 2, endIndex))
+                        }
+                        processedEnd = endIndex + 2
+                    } else {
+                        append(text[start])
+                        processedEnd = start + 1
+                    }
+                }
+                // 链接
+                match.value.matches(linkPattern) -> {
+                    val linkMatch = linkPattern.find(match.value)
+                    if (linkMatch != null) {
+                        val linkText = linkMatch.groupValues[1]
+                        val linkUrl = linkMatch.groupValues[2]
+                        withStyle(SpanStyle(
+                            color = MaterialTheme.colorScheme.primary,
+                            fontWeight = FontWeight.Medium
+                        )) {
+                            append(linkText)
+                        }
+                        processedEnd = match.range.last + 1
+                    } else {
+                        append(text[start])
+                        processedEnd = start + 1
+                    }
+                }
+                // 斜体
+                text[start] == '*' -> {
+                    val endIndex = text.indexOf('*', start + 1)
+                    if (endIndex > start && text.getOrNull(endIndex + 1) != '*') {
+                        withStyle(SpanStyle(fontStyle = FontStyle.Italic)) {
+                            append(text.substring(start + 1, endIndex))
+                        }
+                        processedEnd = endIndex + 1
+                    } else {
+                        append(text[start])
+                        processedEnd = start + 1
+                    }
+                }
+                else -> {
+                    append(text[start])
+                    processedEnd = start + 1
+                }
+            }
+        }
+        
+        // 添加剩余文本
+        if (processedEnd < text.length) {
+            append(text.substring(processedEnd))
+        }
+    }
+}
+
+/**
+ * 代码块卡片
+ */
+@Composable
+private fun CodeBlockCard(code: String, language: String) {
+    Card(
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surfaceVariant
+        ),
+        modifier = Modifier.fillMaxWidth()
+    ) {
+        Column(
+            modifier = Modifier.padding(12.dp)
+        ) {
+            if (language.isNotEmpty()) {
+                Text(
+                    text = language,
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.padding(bottom = 4.dp)
+                )
+            }
+            Text(
+                text = code,
+                style = MaterialTheme.typography.bodySmall.copy(
+                    fontFamily = FontFamily.Monospace
+                ),
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier
+                    .horizontalScroll(rememberScrollState())
+            )
+        }
+    }
+}
+
+/**
+ * Markdown 表格
+ */
+@Composable
+private fun MarkdownTable(headers: List<String>, rows: List<List<String>>) {
+    Card(
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surface
+        ),
+        modifier = Modifier.fillMaxWidth()
+    ) {
+        Column(
+            modifier = Modifier.padding(8.dp)
+        ) {
+            // 表头
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceEvenly
+            ) {
+                headers.forEach { header ->
+                    Text(
+                        text = header,
+                        style = MaterialTheme.typography.labelMedium,
+                        fontWeight = FontWeight.Bold,
+                        modifier = Modifier.weight(1f),
+                        textAlign = TextAlign.Center
+                    )
+                }
+            }
+            
+            Divider(modifier = Modifier.padding(vertical = 4.dp))
             
             // 数据行
             rows.forEach { row ->
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .horizontalScroll(rememberScrollState())
+                        .padding(vertical = 2.dp),
+                    horizontalArrangement = Arrangement.SpaceEvenly
                 ) {
                     row.forEach { cell ->
-                        Box(
-                            modifier = Modifier
-                                .width(120.dp)
-                                .border(
-                                    width = 1.dp,
-                                    color = borderColor
-                                )
-                                .padding(8.dp)
-                        ) {
-                            Text(
-                                text = cell,
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onSurface
-                            )
-                        }
+                        Text(
+                            text = cell,
+                            style = MaterialTheme.typography.bodySmall,
+                            modifier = Modifier.weight(1f),
+                            textAlign = TextAlign.Center,
+                            maxLines = 2,
+                            overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
+                        )
                     }
                 }
             }
         }
-    }
-    
-    Spacer(modifier = Modifier.height(8.dp))
-}
-
-@Composable
-private fun UnorderedList(items: List<String>) {
-    Column(modifier = Modifier.padding(start = 16.dp)) {
-        items.forEach { item ->
-            Row(
-                verticalAlignment = Alignment.Top,
-                modifier = Modifier.padding(vertical = 2.dp)
-            ) {
-                Text(
-                    text = "•",
-                    style = MaterialTheme.typography.bodyMedium,
-                    modifier = Modifier.padding(end = 8.dp)
-                )
-                Text(
-                    text = parseInlineMarkdown(item),
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurface
-                )
-            }
-        }
-    }
-}
-
-@Composable
-private fun Blockquote(text: String) {
-    val borderColor = MaterialTheme.colorScheme.primary
-    
-    Row(modifier = Modifier.padding(vertical = 4.dp)) {
-        Box(
-            modifier = Modifier
-                .width(4.dp)
-                .fillMaxHeight()
-                .background(borderColor)
-        )
-        Spacer(modifier = Modifier.width(12.dp))
-        Text(
-            text = parseInlineMarkdown(text),
-            style = MaterialTheme.typography.bodyMedium.copy(fontStyle = FontStyle.Italic),
-            color = MaterialTheme.colorScheme.onSurfaceVariant
-        )
-    }
-}
-
-/**
- * 解析行内 Markdown（粗体等）
- */
-@Composable
-private fun parseInlineMarkdown(text: String) = buildAnnotatedString {
-    var currentIndex = 0
-    
-    while (currentIndex < text.length) {
-        // 检查 **粗体**
-        val boldStart = text.indexOf("**", currentIndex)
-        if (boldStart != -1) {
-            val boldEnd = text.indexOf("**", boldStart + 2)
-            if (boldEnd != -1) {
-                // 添加粗体前的普通文本
-                if (boldStart > currentIndex) {
-                    append(text.substring(currentIndex, boldStart))
-                }
-                // 添加粗体文本
-                withStyle(SpanStyle(fontWeight = FontWeight.Bold)) {
-                    append(text.substring(boldStart + 2, boldEnd))
-                }
-                currentIndex = boldEnd + 2
-                continue
-            }
-        }
-        
-        // 没有找到更多格式，直接添加剩余文本
-        append(text.substring(currentIndex))
-        break
     }
 }

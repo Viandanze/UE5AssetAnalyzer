@@ -1,10 +1,13 @@
 package com.example.ue5analyzer.ui.screens
 
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.expandVertically
+import androidx.compose.animation.shrinkVertically
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -155,28 +158,30 @@ private fun AssetDetailContent(
             RiskLevelCard(asset = asset)
         }
         
-        // 依赖关系
+        // 依赖关系（可折叠）
         if (asset.dependencies.isNotEmpty()) {
             item {
-                DependenciesCard(
+                CollapsibleDependenciesCard(
                     title = "依赖的资源",
                     description = "此资源引用了以下资源",
                     dependencies = asset.dependencies,
                     assetMap = assetMap,
-                    onAssetClick = onAssetClick
+                    onAssetClick = onAssetClick,
+                    defaultExpanded = true
                 )
             }
         }
         
-        // 被引用关系
+        // 被引用关系（可折叠）
         if (asset.references.isNotEmpty()) {
             item {
-                ReferencesCard(
+                CollapsibleReferencesCard(
                     title = "被引用的资源",
                     description = "以下资源引用了此资源",
                     references = asset.references,
                     assetMap = assetMap,
-                    onAssetClick = onAssetClick
+                    onAssetClick = onAssetClick,
+                    defaultExpanded = true
                 )
             }
         }
@@ -337,14 +342,23 @@ private data class RiskLevelInfo(
     val description: String
 )
 
+/**
+ * 可折叠的依赖卡片
+ */
 @Composable
-private fun DependenciesCard(
+private fun CollapsibleDependenciesCard(
     title: String,
     description: String,
     dependencies: List<String>,
     assetMap: Map<String, UEAsset>,
-    onAssetClick: (String) -> Unit
+    onAssetClick: (String) -> Unit,
+    defaultExpanded: Boolean = false
 ) {
+    var expanded by remember { mutableStateOf(defaultExpanded) }
+    val displayLimit = 3
+    val hasMore = dependencies.size > displayLimit
+    val displayedDependencies = if (expanded) dependencies else dependencies.take(displayLimit)
+    
     Card(
         modifier = Modifier.fillMaxWidth()
     ) {
@@ -353,18 +367,46 @@ private fun DependenciesCard(
                 .fillMaxWidth()
                 .padding(16.dp)
         ) {
+            // 可折叠标题行
             Row(
-                verticalAlignment = Alignment.CenterVertically
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clickable { expanded = !expanded },
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween
             ) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier.weight(1f)
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Link,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.primary
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text(
+                        text = title,
+                        style = MaterialTheme.typography.titleMedium
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Surface(
+                        shape = MaterialTheme.shapes.small,
+                        color = MaterialTheme.colorScheme.primaryContainer
+                    ) {
+                        Text(
+                            text = dependencies.size.toString(),
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onPrimaryContainer,
+                            modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                        )
+                    }
+                }
+                
                 Icon(
-                    imageVector = Icons.Default.Link,
-                    contentDescription = null,
-                    tint = MaterialTheme.colorScheme.primary
-                )
-                Spacer(modifier = Modifier.width(8.dp))
-                Text(
-                    text = title,
-                    style = MaterialTheme.typography.titleMedium
+                    imageVector = if (expanded) Icons.Default.ExpandLess else Icons.Default.ExpandMore,
+                    contentDescription = if (expanded) "收起" else "展开",
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
             
@@ -378,44 +420,69 @@ private fun DependenciesCard(
             
             Spacer(modifier = Modifier.height(12.dp))
             
-            dependencies.forEach { depId ->
-                val depAsset = assetMap[depId]
-                val assetName = depAsset?.name ?: depId
-                val isClickable = depAsset != null
-                
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .then(
+            // 依赖列表
+            AnimatedVisibility(
+                visible = true,
+                enter = expandVertically(),
+                exit = shrinkVertically()
+            ) {
+                Column {
+                    displayedDependencies.forEach { depId ->
+                        val depAsset = assetMap[depId]
+                        val assetName = depAsset?.name ?: depId
+                        val isClickable = depAsset != null
+                        
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .then(
+                                    if (isClickable) {
+                                        Modifier.clickable { onAssetClick(depId) }
+                                    } else {
+                                        Modifier
+                                    }
+                                )
+                                .padding(vertical = 6.dp, horizontal = 4.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.ArrowRight,
+                                contentDescription = null,
+                                modifier = Modifier.size(16.dp),
+                                tint = if (isClickable) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text(
+                                text = assetName,
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = if (isClickable) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
+                            )
                             if (isClickable) {
-                                Modifier.clickable { onAssetClick(depId) }
-                            } else {
-                                Modifier
+                                Spacer(modifier = Modifier.width(4.dp))
+                                Icon(
+                                    imageVector = Icons.Default.ChevronRight,
+                                    contentDescription = null,
+                                    modifier = Modifier.size(14.dp),
+                                    tint = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
                             }
-                        )
-                        .padding(vertical = 6.dp, horizontal = 4.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.ArrowRight,
-                        contentDescription = null,
-                        modifier = Modifier.size(16.dp),
-                        tint = if (isClickable) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Text(
-                        text = assetName,
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = if (isClickable) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                    if (isClickable) {
-                        Spacer(modifier = Modifier.width(4.dp))
-                        Icon(
-                            imageVector = Icons.Default.ChevronRight,
-                            contentDescription = null,
-                            modifier = Modifier.size(14.dp),
-                            tint = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
+                        }
+                    }
+                    
+                    // 展开/收起按钮
+                    if (hasMore) {
+                        TextButton(
+                            onClick = { expanded = !expanded },
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Text(if (expanded) "收起" else "展开更多 (${dependencies.size - displayLimit})")
+                            Spacer(modifier = Modifier.width(4.dp))
+                            Icon(
+                                imageVector = if (expanded) Icons.Default.ExpandLess else Icons.Default.ExpandMore,
+                                contentDescription = null,
+                                modifier = Modifier.size(18.dp)
+                            )
+                        }
                     }
                 }
             }
@@ -423,14 +490,23 @@ private fun DependenciesCard(
     }
 }
 
+/**
+ * 可折叠的引用卡片
+ */
 @Composable
-private fun ReferencesCard(
+private fun CollapsibleReferencesCard(
     title: String,
     description: String,
     references: List<String>,
     assetMap: Map<String, UEAsset>,
-    onAssetClick: (String) -> Unit
+    onAssetClick: (String) -> Unit,
+    defaultExpanded: Boolean = false
 ) {
+    var expanded by remember { mutableStateOf(defaultExpanded) }
+    val displayLimit = 3
+    val hasMore = references.size > displayLimit
+    val displayedReferences = if (expanded) references else references.take(displayLimit)
+    
     Card(
         modifier = Modifier.fillMaxWidth()
     ) {
@@ -439,18 +515,46 @@ private fun ReferencesCard(
                 .fillMaxWidth()
                 .padding(16.dp)
         ) {
+            // 可折叠标题行
             Row(
-                verticalAlignment = Alignment.CenterVertically
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clickable { expanded = !expanded },
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween
             ) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier.weight(1f)
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.SwapHoriz,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.secondary
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text(
+                        text = title,
+                        style = MaterialTheme.typography.titleMedium
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Surface(
+                        shape = MaterialTheme.shapes.small,
+                        color = MaterialTheme.colorScheme.secondaryContainer
+                    ) {
+                        Text(
+                            text = references.size.toString(),
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onSecondaryContainer,
+                            modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                        )
+                    }
+                }
+                
                 Icon(
-                    imageVector = Icons.Default.TransferWithinAStation,
-                    contentDescription = null,
-                    tint = MaterialTheme.colorScheme.secondary
-                )
-                Spacer(modifier = Modifier.width(8.dp))
-                Text(
-                    text = title,
-                    style = MaterialTheme.typography.titleMedium
+                    imageVector = if (expanded) Icons.Default.ExpandLess else Icons.Default.ExpandMore,
+                    contentDescription = if (expanded) "收起" else "展开",
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
             
@@ -464,44 +568,69 @@ private fun ReferencesCard(
             
             Spacer(modifier = Modifier.height(12.dp))
             
-            references.forEach { refId ->
-                val refAsset = assetMap[refId]
-                val assetName = refAsset?.name ?: refId
-                val isClickable = refAsset != null
-                
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .then(
+            // 引用列表
+            AnimatedVisibility(
+                visible = true,
+                enter = expandVertically(),
+                exit = shrinkVertically()
+            ) {
+                Column {
+                    displayedReferences.forEach { refId ->
+                        val refAsset = assetMap[refId]
+                        val assetName = refAsset?.name ?: refId
+                        val isClickable = refAsset != null
+                        
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .then(
+                                    if (isClickable) {
+                                        Modifier.clickable { onAssetClick(refId) }
+                                    } else {
+                                        Modifier
+                                    }
+                                )
+                                .padding(vertical = 6.dp, horizontal = 4.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.ArrowBack,
+                                contentDescription = null,
+                                modifier = Modifier.size(16.dp),
+                                tint = if (isClickable) MaterialTheme.colorScheme.secondary else MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text(
+                                text = assetName,
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = if (isClickable) MaterialTheme.colorScheme.secondary else MaterialTheme.colorScheme.onSurfaceVariant
+                            )
                             if (isClickable) {
-                                Modifier.clickable { onAssetClick(refId) }
-                            } else {
-                                Modifier
+                                Spacer(modifier = Modifier.width(4.dp))
+                                Icon(
+                                    imageVector = Icons.Default.ChevronRight,
+                                    contentDescription = null,
+                                    modifier = Modifier.size(14.dp),
+                                    tint = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
                             }
-                        )
-                        .padding(vertical = 6.dp, horizontal = 4.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.ArrowLeft,
-                        contentDescription = null,
-                        modifier = Modifier.size(16.dp),
-                        tint = if (isClickable) MaterialTheme.colorScheme.secondary else MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Text(
-                        text = assetName,
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = if (isClickable) MaterialTheme.colorScheme.secondary else MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                    if (isClickable) {
-                        Spacer(modifier = Modifier.width(4.dp))
-                        Icon(
-                            imageVector = Icons.Default.ChevronRight,
-                            contentDescription = null,
-                            modifier = Modifier.size(14.dp),
-                            tint = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
+                        }
+                    }
+                    
+                    // 展开/收起按钮
+                    if (hasMore) {
+                        TextButton(
+                            onClick = { expanded = !expanded },
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Text(if (expanded) "收起" else "展开更多 (${references.size - displayLimit})")
+                            Spacer(modifier = Modifier.width(4.dp))
+                            Icon(
+                                imageVector = if (expanded) Icons.Default.ExpandLess else Icons.Default.ExpandMore,
+                                contentDescription = null,
+                                modifier = Modifier.size(18.dp)
+                            )
+                        }
                     }
                 }
             }
@@ -514,7 +643,7 @@ private fun OrphanWarningCard() {
     Card(
         modifier = Modifier.fillMaxWidth(),
         colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.errorContainer
+            containerColor = MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.5f)
         )
     ) {
         Row(
@@ -528,17 +657,19 @@ private fun OrphanWarningCard() {
                 contentDescription = null,
                 tint = MaterialTheme.colorScheme.error
             )
+            
             Spacer(modifier = Modifier.width(12.dp))
+            
             Column {
                 Text(
-                    text = "孤立资源",
+                    text = "孤立资源警告",
                     style = MaterialTheme.typography.titleSmall,
                     fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.onErrorContainer
+                    color = MaterialTheme.colorScheme.error
                 )
                 Spacer(modifier = Modifier.height(4.dp))
                 Text(
-                    text = "此资源没有被任何其他资源引用，可能是冗余资源，建议检查是否可以删除。",
+                    text = "此资源未被任何其他资源引用，可能为未使用的冗余资源。建议检查是否可安全删除。",
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onErrorContainer
                 )
@@ -554,8 +685,7 @@ private fun InfoRow(
     value: String
 ) {
     Row(
-        modifier = Modifier.fillMaxWidth(),
-        verticalAlignment = Alignment.CenterVertically
+        verticalAlignment = Alignment.Top
     ) {
         Icon(
             imageVector = icon,
@@ -588,7 +718,6 @@ private fun formatFileSize(bytes: Long): String {
 }
 
 private fun formatTimestamp(timestamp: Long): String {
-    val sdf = java.text.SimpleDateFormat("yyyy-MM-dd HH:mm", java.util.Locale.getDefault())
+    val sdf = java.text.SimpleDateFormat("yyyy-MM-dd HH:mm:ss", java.util.Locale.getDefault())
     return sdf.format(java.util.Date(timestamp))
 }
-

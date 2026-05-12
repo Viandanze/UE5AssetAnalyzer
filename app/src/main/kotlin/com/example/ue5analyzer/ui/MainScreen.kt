@@ -14,6 +14,7 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
+import com.example.ue5analyzer.data.manager.ThemePreferencesManager
 import com.example.ue5analyzer.ui.navigation.Screen
 import com.example.ue5analyzer.ui.navigation.bottomNavItems
 import com.example.ue5analyzer.ui.screens.AssetDetailScreen
@@ -28,7 +29,8 @@ import com.example.ue5analyzer.ui.viewmodel.MainViewModel
  */
 @Composable
 fun MainScreen(
-    viewModel: MainViewModel = viewModel()
+    viewModel: MainViewModel = viewModel(),
+    themePreferencesManager: ThemePreferencesManager? = null
 ) {
     val navController = rememberNavController()
     val navBackStackEntry by navController.currentBackStackEntryAsState()
@@ -90,7 +92,8 @@ fun MainScreen(
                     },
                     onHistoryClick = {
                         navController.navigate(Screen.ProjectList.route)
-                    }
+                    },
+                    themePreferencesManager = themePreferencesManager
                 )
             }
             

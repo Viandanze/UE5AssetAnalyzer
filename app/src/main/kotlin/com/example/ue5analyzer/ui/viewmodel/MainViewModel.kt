@@ -5,12 +5,16 @@ import android.net.Uri
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.ue5analyzer.data.database.*
+import com.example.ue5analyzer.data.filter.AssetFilter
+import com.example.ue5analyzer.data.manager.ScanConfigManager
 import com.example.ue5analyzer.data.parser.UEProjectParser
+import com.example.ue5analyzer.data.selection.SelectionManager
 import com.example.ue5analyzer.domain.analyzer.AssetAnalyzer
 import com.example.ue5analyzer.domain.report.ReportGenerator
 import com.example.ue5analyzer.model.AssetType
 import com.example.ue5analyzer.model.OrphanRiskLevel
 import com.example.ue5analyzer.model.AnalysisReport
+import com.example.ue5analyzer.model.ScanConfig
 import com.example.ue5analyzer.model.ScanResult
 import com.example.ue5analyzer.model.UEAsset
 import kotlinx.coroutines.flow.*
@@ -21,14 +25,16 @@ import java.util.UUID
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
+import kotlinx.coroutines.CoroutineScope
+import androidx.compose.runtime.mutableStateListOf
 
 /**
  * 主 ViewModel
- * TODO: 考虑拆分为多个 ViewModel（如 ScanViewModel、FilterViewModel）以降低职责耦合度
- * 当前设计将扫描、过滤、排序逻辑集中在此，便于管理但可能导致维护困难
+ * 采用 region 分区组织代码，将不同职责的逻辑分离到不同区域
  */
 class MainViewModel(application: Application) : AndroidViewModel(application) {
     
+    // region 依赖注入
     private val context = application
     
     // 数据库（单例）
@@ -39,7 +45,14 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     private val analyzer = AssetAnalyzer()
     private val reportGenerator = ReportGenerator(context)
     
-    // UI 状态
+    // ScanConfig 管理器
+    val scanConfigManager = ScanConfigManager(context)
+    
+    // 选择管理器
+    private val selectionManager = SelectionManager()
+    // endregion
+    
+    // region UI 状态
     private val _uiState = MutableStateFlow<UiState>(UiState.Idle)
     val uiState: StateFlow<UiState> = _uiState.asStateFlow()
     
@@ -67,7 +80,9 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     // 当前报告
     private val _currentReport = MutableStateFlow<AnalysisReport?>(null)
     val currentReport: StateFlow<AnalysisReport?> = _currentReport.asStateFlow()
+    // endregion
     
+    // region 搜索与筛选状态
     // 搜索关键词
     private val _searchQuery = MutableStateFlow("")
     val searchQuery: StateFlow<String> = _searchQuery.asStateFlow()
@@ -87,13 +102,9 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     // 孤立风险等级筛选
     private val _orphanRiskLevelFilter = MutableStateFlow<OrphanRiskLevel?>(null)
     val orphanRiskLevelFilter: StateFlow<OrphanRiskLevel?> = _orphanRiskLevelFilter.asStateFlow()
+    // endregion
     
-    // 扫描协程任务
-    private var scanJob: Job? = null
-    
-    // 过滤操作互斥锁，确保线程安全
-    private val filterMutex = Mutex()
-    
+    // region 选择状态
     // 批量选择状态
     private val _selectedAssetIds = mutableStateListOf<String>()
     val selectedAssetIds: List<String> = _selectedAssetIds
@@ -101,15 +112,26 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     // 选择模式状态
     private val _isSelectionMode = MutableStateFlow(false)
     val isSelectionMode: StateFlow<Boolean> = _isSelectionMode.asStateFlow()
+    // endregion
     
-    /**
-     * 设置孤立风险等级筛选
-     */
-    fun setOrphanRiskLevelFilter(level: OrphanRiskLevel?) {
-        _orphanRiskLevelFilter.value = level
-        applyFilters()
-    }
+    // region ScanConfig 状态
+    // ScanConfig Flow
+    val scanConfigFlow = scanConfigManager.scanConfigFlow
+        .stateIn(viewModelScope, SharingStarted.Eagerly, ScanConfig.DEFAULT)
+    // endregion
     
+    // region 私有变量
+    // 扫描协程任务
+    private var scanJob: Job? = null
+    
+    // 过滤操作互斥锁，确保线程安全
+    private val filterMutex = Mutex()
+    
+    // 搜索防抖任务
+    private var searchJob: Job? = null
+    // endregion
+    
+    // region 扫描相关方法
     /**
      * 扫描项目
      */
@@ -130,9 +152,12 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                 }
                 
                 // 带进度回调的扫描
-                val scanResult = parser.scanProject(uri) { count, total, name ->
-                    _scanProgress.value = ScanProgress(scannedCount = count, totalCount = total, currentFile = name)
-                }
+                val scanResult = parser.scanProject(
+                    projectUri = uri,
+                    onProgress = { count: Int, total: Int, name: String ->
+                        _scanProgress.value = ScanProgress(scannedCount = count, totalCount = total, currentFile = name)
+                    }
+                )
                 
                 // 保存项目
                 // 使用 getProjectByName 直接查询，避免加载所有项目后过滤
@@ -209,6 +234,106 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     }
     
     /**
+     * 带配置扫描项目
+     */
+    fun scanProjectWithConfig(uri: Uri, config: ScanConfig) {
+        scanJob?.cancel()
+        scanJob = viewModelScope.launch {
+            _uiState.value = UiState.Scanning
+            _scanProgress.value = ScanProgress(scannedCount = 0, totalCount = 0, currentFile = "")
+            
+            try {
+                // SAF 权限持久化检查
+                val hasPermission = context.contentResolver.persistedUriPermissions
+                    .any { it.uri == uri && it.isReadPermission }
+                if (!hasPermission) {
+                    _scanProgress.value = null
+                    _uiState.value = UiState.Error("存储权限已过期，请重新选择项目文件夹", ErrorReason.PERMISSION_DENIED)
+                    return@launch
+                }
+                
+                // 带进度回调的扫描（传入 ScanConfig）
+                val scanResult = parser.scanProject(
+                    projectUri = uri,
+                    onProgress = { count: Int, total: Int, name: String ->
+                        _scanProgress.value = ScanProgress(scannedCount = count, totalCount = total, currentFile = name)
+                    },
+                    scanConfig = config
+                )
+                
+                // 保存项目
+                val existingProject = db.projectDao().getProjectByName(scanResult.projectName)
+                
+                val projectId = if (existingProject != null) {
+                    db.assetDao().deleteAssetsByProject(existingProject.id)
+                    db.projectDao().insertProject(existingProject.copy(
+                        totalAssets = scanResult.totalAssets,
+                        totalSize = scanResult.totalSize,
+                        lastScanned = System.currentTimeMillis()
+                    ))
+                    existingProject.id
+                } else {
+                    UUID.randomUUID().toString()
+                }
+                
+                val projectEntity = ProjectEntity(
+                    id = projectId,
+                    name = scanResult.projectName,
+                    path = scanResult.projectPath,
+                    totalAssets = scanResult.totalAssets,
+                    totalSize = scanResult.totalSize,
+                    lastScanned = System.currentTimeMillis()
+                )
+                db.projectDao().insertProject(projectEntity)
+                _currentProject.value = projectEntity
+                
+                // 保存所有资产
+                val assetEntities = scanResult.allAssets.map { asset ->
+                    AssetEntity(
+                        id = asset.id,
+                        name = asset.name,
+                        path = asset.path,
+                        type = asset.type.name,
+                        size = asset.size,
+                        dependencies = Json.encodeToString(asset.dependencies),
+                        references = Json.encodeToString(asset.references),
+                        isOrphan = asset.isOrphan,
+                        orphanRiskLevel = asset.orphanRiskLevel.name,
+                        lastModified = asset.lastModified,
+                        projectId = projectId
+                    )
+                }
+                db.assetDao().insertAssets(assetEntities)
+                
+                // 更新资产列表
+                _assets.value = scanResult.allAssets
+                
+                // 生成报告
+                val report = analyzer.generateReport(
+                    scanResult.projectPath,
+                    scanResult.projectName,
+                    scanResult.allAssets
+                )
+                _currentReport.value = report
+                
+                // 清除进度
+                _scanProgress.value = null
+                
+                _uiState.value = UiState.Success(scanResult)
+            } catch (e: kotlinx.coroutines.CancellationException) {
+                _scanProgress.value = null
+                _uiState.value = UiState.Idle
+            } catch (e: java.io.IOException) {
+                _scanProgress.value = null
+                _uiState.value = UiState.Error("文件读取失败: ${e.message}", ErrorReason.IO_ERROR)
+            } catch (e: Exception) {
+                _scanProgress.value = null
+                _uiState.value = UiState.Error(e.message ?: "扫描失败", ErrorReason.UNKNOWN)
+            }
+        }
+    }
+    
+    /**
      * 取消扫描
      */
     fun cancelScan() {
@@ -261,12 +386,41 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             db.projectDao().deleteProjectById(projectId)
         }
     }
+    // endregion
     
+    // region ScanConfig 方法
+    /**
+     * 更新 ScanConfig
+     */
+    fun updateScanConfig(config: ScanConfig) {
+        viewModelScope.launch {
+            scanConfigManager.saveScanConfig(config)
+        }
+    }
+    
+    /**
+     * 更新忽略目录
+     */
+    fun updateIgnoredDirectories(directories: Set<String>) {
+        viewModelScope.launch {
+            scanConfigManager.updateIgnoredDirectories(directories)
+        }
+    }
+    
+    /**
+     * 更新忽略扩展名
+     */
+    fun updateIgnoredExtensions(extensions: Set<String>) {
+        viewModelScope.launch {
+            scanConfigManager.updateIgnoredExtensions(extensions)
+        }
+    }
+    // endregion
+    
+    // region 搜索与筛选方法
     /**
      * 搜索资产（带300ms防抖）
      */
-    private var searchJob: Job? = null
-    
     fun searchAssets(query: String) {
         _searchQuery.value = query
         searchJob?.cancel()
@@ -301,51 +455,36 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     }
     
     /**
+     * 设置孤立风险等级筛选
+     */
+    fun setOrphanRiskLevelFilter(level: OrphanRiskLevel?) {
+        _orphanRiskLevelFilter.value = level
+        applyFilters()
+    }
+    
+    /**
      * 应用过滤条件和排序
      * 使用 Mutex 确保线程安全，防止并发访问冲突
      */
     private fun applyFilters() {
         viewModelScope.launch {
             filterMutex.withLock {
-                var result = _assets.value
-                
-                // 搜索过滤（支持名称和路径搜索）
-                if (_searchQuery.value.isNotEmpty()) {
-                    val query = _searchQuery.value
-                    result = result.filter { 
-                        it.name.contains(query, ignoreCase = true) || 
-                        it.path.contains(query, ignoreCase = true) 
-                    }
-                }
-                
-                // 类型过滤
-                _filterType.value?.let { type ->
-                    result = result.filter { it.type == type }
-                }
-                
-                // 孤立资源过滤
-                if (_showOrphanOnly.value) {
-                    result = result.filter { it.isOrphan }
-                }
-                
-                // 孤立风险等级筛选
-                _orphanRiskLevelFilter.value?.let { level ->
-                    result = result.filter { it.orphanRiskLevel == level }
-                }
-                
-                // 排序
-                result = when (_sortOrder.value) {
-                    SortOrder.NAME -> result.sortedBy { it.name.lowercase() }
-                    SortOrder.SIZE_DESC -> result.sortedByDescending { it.size }
-                    SortOrder.REFS_DESC -> result.sortedByDescending { it.references.size }
-                    SortOrder.TYPE -> result.sortedBy { it.type.name }
-                }
+                val result = AssetFilter.filter(
+                    assets = _assets.value,
+                    searchQuery = _searchQuery.value,
+                    filterType = _filterType.value,
+                    showOrphanOnly = _showOrphanOnly.value,
+                    orphanRiskLevel = _orphanRiskLevelFilter.value,
+                    sortOrder = _sortOrder.value
+                )
                 
                 _filteredAssets.value = result
             }
         }
     }
+    // endregion
     
+    // region 报告方法
     /**
      * 导出报告
      */
@@ -360,7 +499,9 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     fun shareReport() = _currentReport.value?.let { 
         reportGenerator.shareReport(it) 
     }
+    // endregion
     
+    // region 选择相关方法
     /**
      * 切换选择模式
      */
@@ -448,7 +589,9 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         
         return builder.toString()
     }
+    // endregion
     
+    // region 工具方法
     /**
      * 格式化文件大小
      */
@@ -460,8 +603,10 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             else -> String.format("%.1f GB", bytes / (1024.0 * 1024 * 1024))
         }
     }
+    // endregion
 }
 
+// region 数据类和扩展
 /**
  * UI 状态
  */
@@ -540,3 +685,4 @@ data class ProjectInfo(
     val totalSize: Long,
     val lastScanned: Long
 )
+// endregion
