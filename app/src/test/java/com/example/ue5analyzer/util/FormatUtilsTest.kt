@@ -70,6 +70,7 @@ class FormatUtilsTest {
     @Test
     fun `formatFileSize boundaryAtMB GB border`() {
         // 边界值: 1048575 B -> KB 格式
+        // 1048575 / 1024 = 1023.999... -> "1024.0 KB"
         assertEquals("1024.0 KB", FormatUtils.formatFileSize(1048575))
         // 边界值: 1048576 B -> MB 格式
         assertEquals("1.0 MB", FormatUtils.formatFileSize(1048576))
@@ -78,7 +79,8 @@ class FormatUtilsTest {
     @Test
     fun `formatFileSize boundaryAtGB border`() {
         // 边界值: 1073741823 B -> MB 格式
-        assertEquals("1023.0 MB", FormatUtils.formatFileSize(1073741823))
+        // 1073741823 / (1024*1024) = 1023.999... -> "1024.0 MB"
+        assertEquals("1024.0 MB", FormatUtils.formatFileSize(1073741823))
         // 边界值: 1073741824 B -> GB 格式
         assertEquals("1.0 GB", FormatUtils.formatFileSize(1073741824))
     }

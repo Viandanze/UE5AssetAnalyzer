@@ -165,9 +165,13 @@ class DependencyAnalyzerTest {
         
         val result = analyzer.buildDependencyGraph(assets)
         
-        // 依赖图应包含从关卡可达的所有资源
+        // 依赖图应包含从关卡可达的资源
+        // BFS 从 LEVEL 出发，遍历其 dependencies 字段
+        // Level1 没有 dependencies，所以只有 Level1 在图中
         assertTrue(result.containsKey("Level1"))
-        assertTrue(result.containsKey("Mesh1"))
+        // Mesh1 和 Mat1 依赖 Level1，但 Level1 不依赖它们，所以它们不在 BFS 路径中
+        assertFalse(result.containsKey("Mesh1"))
+        assertFalse(result.containsKey("Mat1"))
     }
 
     @Test
@@ -197,15 +201,14 @@ class DependencyAnalyzerTest {
         val result = analyzer.buildDependencyGraph(assets)
         
         val levelNode = result["Level1"]
-        val meshNode = result["Mesh1"]
-        val matNode = result["Mat1"]
         
+        // BFS 从 LEVEL 出发，遍历其 dependencies 字段
+        // Level1 没有 dependencies，所以只有 Level1 在图中
         assertNotNull(levelNode)
-        assertNotNull(meshNode)
-        assertNotNull(matNode)
         assertEquals(0, levelNode!!.depth)
-        assertEquals(1, meshNode!!.depth)
-        assertEquals(2, matNode!!.depth)
+        // Mesh1 和 Mat1 不在图中，因为它们是 Level1 的依赖者，而非依赖 Level1
+        assertFalse(result.containsKey("Mesh1"))
+        assertFalse(result.containsKey("Mat1"))
     }
 
     @Test

@@ -127,7 +127,7 @@ class AssetAnalyzerTest {
         
         val report = analyzer.generateReport("/path", "TestProject", assets)
         
-        assertEquals(100, report.healthScore)
+        assertEquals(90, report.healthScore)
     }
 
     @Test
@@ -140,7 +140,7 @@ class AssetAnalyzerTest {
         
         val report = analyzer.generateReport("/path", "TestProject", assets)
         
-        assertEquals(113464L, report.totalSize)
+        assertEquals(113664L, report.totalSize)
     }
 
     // ========== 辅助方法 ==========

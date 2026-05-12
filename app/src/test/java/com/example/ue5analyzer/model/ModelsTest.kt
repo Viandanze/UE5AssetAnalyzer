@@ -246,8 +246,9 @@ class ModelsTest {
             size = 200
         )
         
-        // 相同 ID 应该相等（数据类默认比较所有属性）
-        assertEquals(asset1, asset2)
+        // UEAsset 是数据类，equals 比较所有属性，而非仅 id
+        // 不同 name, path, type, size 的资产不相等
+        assertNotEquals(asset1, asset2)
     }
 
     @Test
