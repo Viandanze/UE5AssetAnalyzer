@@ -69,9 +69,8 @@ class FormatUtilsTest {
 
     @Test
     fun `formatFileSize boundaryAtMB GB border`() {
-        // 边界值: 1048575 B -> KB 格式
-        // 1048575 / 1024 = 1023.999... -> "1024.0 KB"
-        assertEquals("1024.0 KB", FormatUtils.formatFileSize(1048575))
+        // 边界值: 1048575 B -> KB 格式 (整数除法: 1048575 / 1024 = 1023)
+        assertEquals("1023 KB", FormatUtils.formatFileSize(1048575))
         // 边界值: 1048576 B -> MB 格式
         assertEquals("1.0 MB", FormatUtils.formatFileSize(1048576))
     }
