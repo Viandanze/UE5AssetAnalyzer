@@ -8,6 +8,8 @@ import com.example.ue5analyzer.data.database.*
 import com.example.ue5analyzer.data.filter.AssetFilter
 import com.example.ue5analyzer.data.manager.ScanConfigManager
 import com.example.ue5analyzer.data.parser.UEProjectParser
+import com.example.ue5analyzer.data.repository.AssetRepository
+import com.example.ue5analyzer.data.repository.ProjectRepository
 import com.example.ue5analyzer.data.selection.SelectionManager
 import com.example.ue5analyzer.domain.analyzer.AssetAnalyzer
 import com.example.ue5analyzer.domain.report.ReportGenerator
@@ -39,6 +41,10 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     
     // 数据库（单例）
     private val db = AppDatabase.getDatabase(context)
+    
+    // Repository 层（单例，封装数据库和网络的单点访问）
+    private val projectRepository = ProjectRepository(db)
+    private val assetRepository = AssetRepository(db)
     
     // 解析器
     private val parser = UEProjectParser(context)
@@ -72,8 +78,8 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     private val _filteredAssets = MutableStateFlow<List<UEAsset>>(emptyList())
     val filteredAssets: StateFlow<List<UEAsset>> = _filteredAssets.asStateFlow()
     
-    // 项目列表
-    val projects = db.projectDao().getAllProjects()
+    // 项目列表（通过 Repository 获取）
+    val projects = projectRepository.getAllProjects()
         .map { it.map { entity -> entity.toModel() } }
         .stateIn(viewModelScope, SharingStarted.Lazily, emptyList())
     
@@ -160,13 +166,13 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                 )
                 
                 // 保存项目
-                // 使用 getProjectByName 直接查询，避免加载所有项目后过滤
-                val existingProject = db.projectDao().getProjectByName(scanResult.projectName)
+                // 使用 Repository 直接查询，避免加载所有项目后过滤
+                val existingProject = projectRepository.getProjectByName(scanResult.projectName)
                 
                 val projectId = if (existingProject != null) {
                     // 更新已有项目
-                    db.assetDao().deleteAssetsByProject(existingProject.id)
-                    db.projectDao().insertProject(existingProject.copy(
+                    assetRepository.deleteAssetsByProject(existingProject.id)
+                    projectRepository.insertProject(existingProject.copy(
                         totalAssets = scanResult.totalAssets,
                         totalSize = scanResult.totalSize,
                         lastScanned = System.currentTimeMillis()
@@ -184,7 +190,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                     totalSize = scanResult.totalSize,
                     lastScanned = System.currentTimeMillis()
                 )
-                db.projectDao().insertProject(projectEntity)
+                projectRepository.insertProject(projectEntity)
                 _currentProject.value = projectEntity
                 
                 // 保存所有资产（而非只存孤立资产）
@@ -203,7 +209,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                         projectId = projectId
                     )
                 }
-                db.assetDao().insertAssets(assetEntities)
+                assetRepository.insertAssets(assetEntities)
                 
                 // 更新资产列表（使用所有资产）
                 _assets.value = scanResult.allAssets
@@ -262,11 +268,11 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                 )
                 
                 // 保存项目
-                val existingProject = db.projectDao().getProjectByName(scanResult.projectName)
+                val existingProject = projectRepository.getProjectByName(scanResult.projectName)
                 
                 val projectId = if (existingProject != null) {
-                    db.assetDao().deleteAssetsByProject(existingProject.id)
-                    db.projectDao().insertProject(existingProject.copy(
+                    assetRepository.deleteAssetsByProject(existingProject.id)
+                    projectRepository.insertProject(existingProject.copy(
                         totalAssets = scanResult.totalAssets,
                         totalSize = scanResult.totalSize,
                         lastScanned = System.currentTimeMillis()
@@ -284,7 +290,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                     totalSize = scanResult.totalSize,
                     lastScanned = System.currentTimeMillis()
                 )
-                db.projectDao().insertProject(projectEntity)
+                projectRepository.insertProject(projectEntity)
                 _currentProject.value = projectEntity
                 
                 // 保存所有资产
@@ -303,7 +309,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                         projectId = projectId
                     )
                 }
-                db.assetDao().insertAssets(assetEntities)
+                assetRepository.insertAssets(assetEntities)
                 
                 // 更新资产列表
                 _assets.value = scanResult.allAssets
@@ -348,10 +354,10 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
      */
     fun loadProject(projectId: String) {
         viewModelScope.launch {
-            val project = db.projectDao().getProjectById(projectId)
+            val project = projectRepository.getProjectById(projectId)
             _currentProject.value = project
             
-            val assetEntities = db.assetDao().getAssetsByProject(projectId).first()
+            val assetEntities = assetRepository.getAssetsByProject(projectId).first()
             val loadedAssets = assetEntities.map { it.toModel() }
             _assets.value = loadedAssets
             
@@ -382,8 +388,8 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
      */
     fun deleteProject(projectId: String) {
         viewModelScope.launch {
-            db.assetDao().deleteAssetsByProject(projectId)
-            db.projectDao().deleteProjectById(projectId)
+            assetRepository.deleteAssetsByProject(projectId)
+            projectRepository.deleteProjectById(projectId)
         }
     }
     // endregion
