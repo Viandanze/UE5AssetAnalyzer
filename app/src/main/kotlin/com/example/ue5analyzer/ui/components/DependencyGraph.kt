@@ -29,7 +29,7 @@ import androidx.compose.ui.unit.sp
 import com.example.ue5analyzer.model.UEAsset
 
 /**
- * 依赖关系图节点数据
+ * Dependency Graph Node Data
  */
 data class GraphNode(
     val id: String,
@@ -39,19 +39,19 @@ data class GraphNode(
 )
 
 enum class NodeType {
-    CENTER,   // 中心节点（蓝色）
-    DEPENDENCY, // 依赖节点（红色）
-    REFERENCE  // 被引用节点（绿色）
+    CENTER,   // Center node (blue)
+    DEPENDENCY, // Dependency node (red)
+    REFERENCE  // Referenced by node (green)
 }
 
 /**
- * 依赖关系图组件
- * 使用 Compose Canvas 绘制交互式依赖关系图
- * - 中心节点：当前资源（蓝色圆）
- * - 上方节点：依赖的资源（红色圆）
- * - 下方节点：被引用的资源（绿色圆）
- * - 支持拖拽平移和缩放
- * - 点击节点可跳转到对应资源详情
+ * Dependency Graph Component
+ * Use Compose Canvas to draw interactive dependency graph
+ * - Center node: Current asset (blue circle)
+ * - Upper nodes: Dependencies (red circles)
+ * - Lower nodes: Referenced by (green circles)
+ * - Support drag pan and zoom
+ * - Click node to navigate to asset details
  */
 @Composable
 fun DependencyGraph(
@@ -62,19 +62,19 @@ fun DependencyGraph(
 ) {
     val assetMap = remember(assets) { assets.associateBy { it.id } }
     
-    // 构建节点
+    // Build nodes
     val nodes = remember(currentAsset, assetMap) {
         buildList {
-            // 中心节点
+            // Center node
             add(GraphNode(currentAsset.id, currentAsset.name, isCenter = true, type = NodeType.CENTER))
             
-            // 依赖节点（上方的红色圆）
+            // Dependency nodes (upper red circles)
             currentAsset.dependencies.forEach { depId ->
                 val depAsset = assetMap[depId]
                 add(GraphNode(depId, depAsset?.name ?: depId, type = NodeType.DEPENDENCY))
             }
             
-            // 被引用节点（下方的绿色圆）
+            // Referenced by nodes (lower green circles)
             currentAsset.references.forEach { refId ->
                 val refAsset = assetMap[refId]
                 add(GraphNode(refId, refAsset?.name ?: refId, type = NodeType.REFERENCE))
@@ -82,19 +82,19 @@ fun DependencyGraph(
         }
     }
     
-    // 变换状态
+    // Transform state
     var scale by remember { mutableFloatStateOf(1f) }
     var offset by remember { mutableStateOf(Offset.Zero) }
     
-    // 节点位置计算
+    // Node position calculation
     val nodePositions = remember(nodes) {
         calculateNodePositions(nodes)
     }
     
-    // 点击检测
+    // Click detection
     var lastTappedNodeId by remember { mutableStateOf<String?>(null) }
     
-    // 文本测量器（在 Canvas 外部声明）
+    // Text measurer (declared outside Canvas)
     val textMeasurer = rememberTextMeasurer()
     
     Box(
@@ -103,13 +103,13 @@ fun DependencyGraph(
             .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f))
     ) {
         if (nodes.size <= 1) {
-            // 没有依赖关系时显示提示
+            // Show hint when no dependencies exist
             Box(
                 modifier = Modifier.fillMaxSize(),
                 contentAlignment = Alignment.Center
             ) {
                 Text(
-                    text = "暂无依赖关系",
+                    text = "No dependencies",
                     style = MaterialTheme.typography.bodyLarge,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
@@ -135,11 +135,11 @@ fun DependencyGraph(
                     }
                     .pointerInput(nodePositions) {
                         detectTapGestures { tapOffset ->
-                            // 将点击位置转换为画布坐标
+                            // Convert tap position to canvas coordinates
                             val canvasX = (tapOffset.x - offset.x) / scale
                             val canvasY = (tapOffset.y - offset.y) / scale
                             
-                            // 检测点击的节点
+                            // Detect tapped node
                             nodePositions.forEach { (nodeId, position) ->
                                 val distance = kotlin.math.sqrt(
                                     (canvasX - position.x) * (canvasX - position.x) +
@@ -157,7 +157,7 @@ fun DependencyGraph(
                 val centerX = size.width / 2
                 val centerY = size.height / 2
                 
-                // 绘制连线
+                // Draw connections
                 val centerNode = nodes.find { it.isCenter }
                 if (centerNode != null) {
                     val centerPos = nodePositions[centerNode.id] ?: Offset(centerX, centerY)
@@ -171,20 +171,20 @@ fun DependencyGraph(
                                 end = nodePos,
                                 strokeWidth = 2f
                             )
-                            // 绘制箭头
+                            // Draw Arrow
                             drawArrow(nodePos, centerPos)
                         }
                     }
                 }
                 
-                // 绘制节点
+                // Draw Node
                 nodes.forEach { node ->
                     val position = nodePositions[node.id] ?: return@forEach
                     drawNode(node, position)
                 }
             }
             
-            // 绘制节点名称
+            // Draw node names
             Canvas(
                 modifier = Modifier
                     .fillMaxSize()
@@ -225,7 +225,7 @@ fun DependencyGraph(
             }
         }
         
-        // 操作提示
+        // Operation Tips
         Row(
             modifier = Modifier
                 .align(Alignment.BottomCenter)
@@ -238,13 +238,13 @@ fun DependencyGraph(
             verticalAlignment = Alignment.CenterVertically
         ) {
             Text(
-                text = "双指缩放 · 点击节点跳转",
+                text = "Pinch to zoom · Tap node to navigate",
                 style = MaterialTheme.typography.labelSmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
         }
         
-        // 图例
+        // Legend
         Legend(
             modifier = Modifier
                 .align(Alignment.TopEnd)
@@ -254,10 +254,10 @@ fun DependencyGraph(
 }
 
 /**
- * 计算节点位置
- * - 中心节点在中间
- * - 依赖节点在上半圆
- * - 被引用节点在下半圆
+ * Calculate Node Positions
+ * - Center node in the middle
+ * - Dependency nodes in upper semicircle
+ * - Referenced by nodes in lower semicircle
  */
 private fun calculateNodePositions(nodes: List<GraphNode>): Map<String, Offset> {
     val positions = mutableMapOf<String, Offset>()
@@ -267,17 +267,17 @@ private fun calculateNodePositions(nodes: List<GraphNode>): Map<String, Offset> 
     val centerY = 400f
     val radius = 250f
     
-    // 中心节点
+    // Center node
     val centerNode = nodes.find { it.isCenter }
     if (centerNode != null) {
         positions[centerNode.id] = Offset(centerX, centerY)
     }
     
-    // 依赖节点（上方）
+    // Dependency nodes (upper)
     val dependencies = nodes.filter { it.type == NodeType.DEPENDENCY }
     if (dependencies.isNotEmpty()) {
-        val startAngle = -150.0  // 从左上方开始
-        val endAngle = -30.0     // 到右上方结束
+        val startAngle = -150.0  // Start from upper left
+        val endAngle = -30.0     // End at upper right
         val angleStep = (endAngle - startAngle) / (dependencies.size - 1).coerceAtLeast(1)
         
         dependencies.forEachIndexed { index, node ->
@@ -288,11 +288,11 @@ private fun calculateNodePositions(nodes: List<GraphNode>): Map<String, Offset> 
         }
     }
     
-    // 被引用节点（下方）
+    // Referenced by nodes (lower)
     val references = nodes.filter { it.type == NodeType.REFERENCE }
     if (references.isNotEmpty()) {
-        val startAngle = 30.0   // 从右下方开始
-        val endAngle = 150.0    // 到左下方结束
+        val startAngle = 30.0   // Start from lower right
+        val endAngle = 150.0    // End at lower left
         val angleStep = (endAngle - startAngle) / (references.size - 1).coerceAtLeast(1)
         
         references.forEachIndexed { index, node ->
@@ -307,16 +307,16 @@ private fun calculateNodePositions(nodes: List<GraphNode>): Map<String, Offset> 
 }
 
 /**
- * 绘制节点
+ * Draw Node
  */
 private fun DrawScope.drawNode(node: GraphNode, position: Offset) {
     val color = when (node.type) {
-        NodeType.CENTER -> Color(0xFF2196F3)      // 蓝色
-        NodeType.DEPENDENCY -> Color(0xFFF44336) // 红色
-        NodeType.REFERENCE -> Color(0xFF4CAF50)  // 绿色
+        NodeType.CENTER -> Color(0xFF2196F3)      // Blue
+        NodeType.DEPENDENCY -> Color(0xFFF44336) // Red
+        NodeType.REFERENCE -> Color(0xFF4CAF50)  // Green
     }
     
-    // 绘制圆形
+    // Draw circle
     drawCircle(
         color = color,
         radius = NODE_RADIUS,
@@ -324,7 +324,7 @@ private fun DrawScope.drawNode(node: GraphNode, position: Offset) {
         style = Fill
     )
     
-    // 绘制边框
+    // Draw border
     drawCircle(
         color = color.copy(alpha = 0.8f),
         radius = NODE_RADIUS,
@@ -334,7 +334,7 @@ private fun DrawScope.drawNode(node: GraphNode, position: Offset) {
 }
 
 /**
- * 绘制箭头
+ * Draw Arrow
  */
 private fun DrawScope.drawArrow(from: Offset, to: Offset) {
     val arrowSize = 8f
@@ -345,7 +345,7 @@ private fun DrawScope.drawArrow(from: Offset, to: Offset) {
     val normalized = direction / length
     val arrowTip = to - normalized * (NODE_RADIUS + 2)
     
-    // 计算垂直于方向的向量
+    // Calculate vector perpendicular to direction
     val perpendicular = Offset(-normalized.y, normalized.x)
     
     val arrowLeft = arrowTip - normalized * arrowSize + perpendicular * (arrowSize / 2)
@@ -366,7 +366,7 @@ private fun DrawScope.drawArrow(from: Offset, to: Offset) {
 }
 
 /**
- * 图例组件
+ * Legend Component
  */
 @Composable
 private fun Legend(modifier: Modifier = Modifier) {
@@ -379,9 +379,9 @@ private fun Legend(modifier: Modifier = Modifier) {
             .padding(8.dp),
         horizontalArrangement = Arrangement.spacedBy(12.dp)
     ) {
-        LegendItem(color = Color(0xFF2196F3), label = "当前资源")
-        LegendItem(color = Color(0xFFF44336), label = "依赖")
-        LegendItem(color = Color(0xFF4CAF50), label = "被引用")
+        LegendItem(color = Color(0xFF2196F3), label = "Current Asset")
+        LegendItem(color = Color(0xFFF44336), label = "Dependency")
+        LegendItem(color = Color(0xFF4CAF50), label = "Referenced By")
     }
 }
 

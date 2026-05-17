@@ -7,7 +7,7 @@ import androidx.compose.material.icons.filled.FolderOpen
 import androidx.compose.ui.graphics.vector.ImageVector
 
 /**
- * 导航目标
+ * Navigation Targets
  */
 sealed class Screen(val route: String) {
     object Scan : Screen("scan")
@@ -20,7 +20,7 @@ sealed class Screen(val route: String) {
 }
 
 /**
- * 底部导航项
+ * Bottom Navigation Items
  */
 data class BottomNavItem(
     val screen: Screen,
@@ -31,17 +31,17 @@ data class BottomNavItem(
 val bottomNavItems = listOf(
     BottomNavItem(
         screen = Screen.Scan,
-        title = "扫描",
+        title = "Scan",
         icon = Icons.Default.FolderOpen
     ),
     BottomNavItem(
         screen = Screen.Stats,
-        title = "统计",
+        title = "Stats",
         icon = Icons.Default.Analytics
     ),
     BottomNavItem(
         screen = Screen.Report,
-        title = "报告",
+        title = "Report",
         icon = Icons.Default.Description
     )
 )

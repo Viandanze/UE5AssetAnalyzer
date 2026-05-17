@@ -6,13 +6,13 @@ import com.example.ue5analyzer.model.UEAsset
 import com.example.ue5analyzer.ui.viewmodel.SortOrder
 
 /**
- * 资产过滤工具类
- * 负责资产的搜索、筛选、排序逻辑
+ * Asset Filter Utilities
+ * Responsible for asset search, filter, and sort logic
  */
 object AssetFilter {
     
     /**
-     * 过滤资产列表
+     * Filter Asset List
      */
     fun filter(
         assets: List<UEAsset>,
@@ -24,7 +24,7 @@ object AssetFilter {
     ): List<UEAsset> {
         var result = assets
         
-        // 搜索过滤（支持名称和路径搜索）
+        // Search filter (supports name and path search)
         if (searchQuery.isNotEmpty()) {
             val query = searchQuery
             result = result.filter { 
@@ -33,22 +33,22 @@ object AssetFilter {
             }
         }
         
-        // 类型过滤
+        // Type filter
         if (filterType != null) {
             result = result.filter { it.type == filterType }
         }
         
-        // 孤立资源过滤
+        // Orphan asset filter
         if (showOrphanOnly) {
             result = result.filter { it.isOrphan }
         }
         
-        // 孤立风险等级筛选
+        // Orphan Risk Level Filter
         if (orphanRiskLevel != null) {
             result = result.filter { it.orphanRiskLevel == orphanRiskLevel }
         }
         
-        // 排序
+        // Sort
         result = when (sortOrder) {
             SortOrder.NAME -> result.sortedBy { it.name.lowercase() }
             SortOrder.SIZE_DESC -> result.sortedByDescending { it.size }

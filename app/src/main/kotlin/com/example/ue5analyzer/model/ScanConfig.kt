@@ -1,8 +1,8 @@
 package com.example.ue5analyzer.model
 
 /**
- * 自定义扫描配置
- * 用于控制扫描过程中的过滤规则
+ * Custom Scan Configuration
+ * Used to control filtering rules during scanning
  */
 data class ScanConfig(
     val ignoredDirectories: Set<String> = setOf(

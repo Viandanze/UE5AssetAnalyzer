@@ -22,7 +22,7 @@ import com.example.ue5analyzer.ui.components.DependencyGraph
 import com.example.ue5analyzer.ui.viewmodel.MainViewModel
 
 /**
- * 资源详情页面
+ * Asset Detail Screen
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -37,19 +37,19 @@ fun AssetDetailScreen(
     val asset = remember(assetId, assets) { assets.find { it.id == assetId } }
     val assetMap = remember(assets) { assets.associateBy { it.id } }
     
-    // Tab 状态
+    // Tab state
     var selectedTab by remember { mutableIntStateOf(0) }
-    val tabs = listOf("详情", "依赖图")
+    val tabs = listOf("Details", "Dependency Graph")
     
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("资源详情") },
+                title = { Text("Asset Details") },
                 navigationIcon = {
                     IconButton(onClick = onBackClick) {
                         Icon(
                             imageVector = Icons.Default.ArrowBack,
-                            contentDescription = "返回"
+                            contentDescription = "Back"
                         )
                     }
                 }
@@ -78,17 +78,17 @@ fun AssetDetailScreen(
                 }
             }
             
-            // Tab 内容
+            // Tab content
             when (selectedTab) {
                 0 -> {
-                    // 详情 Tab
+                    // Details Tab
                     if (asset == null) {
                         Box(
                             modifier = Modifier.fillMaxSize(),
                             contentAlignment = Alignment.Center
                         ) {
                             Text(
-                                text = "资源未找到",
+                                text = "Asset not found",
                                 style = MaterialTheme.typography.bodyLarge,
                                 color = MaterialTheme.colorScheme.error
                             )
@@ -104,14 +104,14 @@ fun AssetDetailScreen(
                     }
                 }
                 1 -> {
-                    // 依赖图 Tab
+                    // Dependency graph tab
                     if (asset == null) {
                         Box(
                             modifier = Modifier.fillMaxSize(),
                             contentAlignment = Alignment.Center
                         ) {
                             Text(
-                                text = "资源未找到",
+                                text = "Asset not found",
                                 style = MaterialTheme.typography.bodyLarge,
                                 color = MaterialTheme.colorScheme.error
                             )
@@ -121,7 +121,7 @@ fun AssetDetailScreen(
                             currentAsset = asset,
                             assets = assets,
                             onNodeClick = { clickedId ->
-                                // 点击节点时，如果点击的不是当前资源，跳转到对应资源
+                                // When clicking a node, if it's not current asset, navigate to that asset
                                 if (clickedId != assetId) {
                                     onAssetClick(clickedId)
                                 }
@@ -148,22 +148,22 @@ private fun AssetDetailContent(
         contentPadding = PaddingValues(16.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
-        // 基本信息卡片
+        // Basic Info Card
         item {
             BasicInfoCard(asset = asset)
         }
         
-        // 风险评级（替代原来的健康度评分）
+        // Risk Rating (replaces original health score)
         item {
             RiskLevelCard(asset = asset)
         }
         
-        // 依赖关系（可折叠）
+        // Dependencies (collapsible)
         if (asset.dependencies.isNotEmpty()) {
             item {
                 CollapsibleDependenciesCard(
-                    title = "依赖的资源",
-                    description = "此资源引用了以下资源",
+                    title = "Dependencies",
+                    description = "This asset references the following assets",
                     dependencies = asset.dependencies,
                     assetMap = assetMap,
                     onAssetClick = onAssetClick,
@@ -172,12 +172,12 @@ private fun AssetDetailContent(
             }
         }
         
-        // 被引用关系（可折叠）
+        // Referenced by (collapsible)
         if (asset.references.isNotEmpty()) {
             item {
                 CollapsibleReferencesCard(
-                    title = "被引用的资源",
-                    description = "以下资源引用了此资源",
+                    title = "Referenced By",
+                    description = "The following assets reference this asset",
                     references = asset.references,
                     assetMap = assetMap,
                     onAssetClick = onAssetClick,
@@ -186,7 +186,7 @@ private fun AssetDetailContent(
             }
         }
         
-        // 孤立标记说明
+        // Orphan flag explanation
         if (asset.isOrphan) {
             item {
                 OrphanWarningCard()
@@ -237,7 +237,7 @@ private fun BasicInfoCard(asset: UEAsset) {
             
             InfoRow(
                 icon = Icons.Default.Folder,
-                label = "路径",
+                label = "Path",
                 value = asset.path
             )
             
@@ -245,7 +245,7 @@ private fun BasicInfoCard(asset: UEAsset) {
             
             InfoRow(
                 icon = Icons.Default.Storage,
-                label = "大小",
+                label = "Size",
                 value = formatFileSize(asset.size)
             )
             
@@ -253,7 +253,7 @@ private fun BasicInfoCard(asset: UEAsset) {
             
             InfoRow(
                 icon = Icons.Default.Schedule,
-                label = "最后修改",
+                label = "Last Modified",
                 value = formatTimestamp(asset.lastModified)
             )
         }
@@ -263,37 +263,37 @@ private fun BasicInfoCard(asset: UEAsset) {
 @Composable
 private fun RiskLevelCard(asset: UEAsset) {
     val (containerColor, contentColor, icon, title, description) = when {
-        // 孤立资源 - 高风险
+        // Orphan assets - High risk
         asset.isOrphan && asset.type != AssetType.LEVEL -> RiskLevelInfo(
             containerColor = MaterialTheme.colorScheme.errorContainer,
             contentColor = MaterialTheme.colorScheme.onErrorContainer,
             icon = Icons.Default.Error,
-            title = "高风险 - 孤立资源",
-            description = "此资源无任何引用，可能为冗余资源，建议检查是否可删除"
+            title = "High Risk - Orphan Asset",
+            description = "This asset has no references. It may be a redundant resource. Consider checking if it can be deleted."
         )
-        // 孤立关卡 - 低风险
+        // Orphan level - Low risk
         asset.isOrphan && asset.type == AssetType.LEVEL -> RiskLevelInfo(
             containerColor = MaterialTheme.colorScheme.tertiaryContainer,
             contentColor = MaterialTheme.colorScheme.onTertiaryContainer,
             icon = Icons.Default.Warning,
-            title = "低风险 - 孤立关卡",
-            description = "此关卡无其他资源引用，可能为未使用的地图文件"
+            title = "Low Risk - Orphan Level",
+            description = "This level has no other assets referencing it. It may be an unused map file."
         )
-        // 引用数=1 - 低风险
+        // Reference count=1 - Low risk
         asset.references.size == 1 -> RiskLevelInfo(
             containerColor = MaterialTheme.colorScheme.tertiaryContainer,
             contentColor = MaterialTheme.colorScheme.onTertiaryContainer,
             icon = Icons.Default.Info,
-            title = "低风险 - 仅1个引用",
-            description = "此资源只有1个引用，存在一定风险"
+            title = "Low Risk - Only 1 Reference",
+            description = "This asset has only 1 reference. There is some risk."
         )
-        // 引用数>=2 - 健康
+        // Reference count>=2 - Healthy
         else -> RiskLevelInfo(
             containerColor = MaterialTheme.colorScheme.primaryContainer,
             contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
             icon = Icons.Default.CheckCircle,
-            title = "健康 - ${asset.references.size}个引用",
-            description = "此资源被多个资源引用，状态正常"
+            title = "Healthy - ${asset.references.size} references",
+            description = "This asset is referenced by multiple assets. Status is normal."
         )
     }
     
@@ -343,7 +343,7 @@ private data class RiskLevelInfo(
 )
 
 /**
- * 可折叠的依赖卡片
+ * Collapsible dependencies card
  */
 @Composable
 private fun CollapsibleDependenciesCard(
@@ -367,7 +367,7 @@ private fun CollapsibleDependenciesCard(
                 .fillMaxWidth()
                 .padding(16.dp)
         ) {
-            // 可折叠标题行
+            // Collapsible header row
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -405,7 +405,7 @@ private fun CollapsibleDependenciesCard(
                 
                 Icon(
                     imageVector = if (expanded) Icons.Default.ExpandLess else Icons.Default.ExpandMore,
-                    contentDescription = if (expanded) "收起" else "展开",
+                    contentDescription = if (expanded) "Collapse" else "Expand",
                     tint = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
@@ -420,7 +420,7 @@ private fun CollapsibleDependenciesCard(
             
             Spacer(modifier = Modifier.height(12.dp))
             
-            // 依赖列表
+            // Dependencies list
             AnimatedVisibility(
                 visible = true,
                 enter = expandVertically(),
@@ -469,13 +469,13 @@ private fun CollapsibleDependenciesCard(
                         }
                     }
                     
-                    // 展开/收起按钮
+                    // Expand/collapse button
                     if (hasMore) {
                         TextButton(
                             onClick = { expanded = !expanded },
                             modifier = Modifier.fillMaxWidth()
                         ) {
-                            Text(if (expanded) "收起" else "展开更多 (${dependencies.size - displayLimit})")
+                            Text(if (expanded) "Collapse" else "Show more (${dependencies.size - displayLimit})")
                             Spacer(modifier = Modifier.width(4.dp))
                             Icon(
                                 imageVector = if (expanded) Icons.Default.ExpandLess else Icons.Default.ExpandMore,
@@ -491,7 +491,7 @@ private fun CollapsibleDependenciesCard(
 }
 
 /**
- * 可折叠的引用卡片
+ * Collapsible references card
  */
 @Composable
 private fun CollapsibleReferencesCard(
@@ -515,7 +515,7 @@ private fun CollapsibleReferencesCard(
                 .fillMaxWidth()
                 .padding(16.dp)
         ) {
-            // 可折叠标题行
+            // Collapsible header row
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -553,7 +553,7 @@ private fun CollapsibleReferencesCard(
                 
                 Icon(
                     imageVector = if (expanded) Icons.Default.ExpandLess else Icons.Default.ExpandMore,
-                    contentDescription = if (expanded) "收起" else "展开",
+                    contentDescription = if (expanded) "Collapse" else "Expand",
                     tint = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
@@ -568,7 +568,7 @@ private fun CollapsibleReferencesCard(
             
             Spacer(modifier = Modifier.height(12.dp))
             
-            // 引用列表
+            // References list
             AnimatedVisibility(
                 visible = true,
                 enter = expandVertically(),
@@ -617,13 +617,13 @@ private fun CollapsibleReferencesCard(
                         }
                     }
                     
-                    // 展开/收起按钮
+                    // Expand/collapse button
                     if (hasMore) {
                         TextButton(
                             onClick = { expanded = !expanded },
                             modifier = Modifier.fillMaxWidth()
                         ) {
-                            Text(if (expanded) "收起" else "展开更多 (${references.size - displayLimit})")
+                            Text(if (expanded) "Collapse" else "Show more (${references.size - displayLimit})")
                             Spacer(modifier = Modifier.width(4.dp))
                             Icon(
                                 imageVector = if (expanded) Icons.Default.ExpandLess else Icons.Default.ExpandMore,
@@ -662,14 +662,14 @@ private fun OrphanWarningCard() {
             
             Column {
                 Text(
-                    text = "孤立资源警告",
+                    text = "Orphan Asset Warning",
                     style = MaterialTheme.typography.titleSmall,
                     fontWeight = FontWeight.Bold,
                     color = MaterialTheme.colorScheme.error
                 )
                 Spacer(modifier = Modifier.height(4.dp))
                 Text(
-                    text = "此资源未被任何其他资源引用，可能为未使用的冗余资源。建议检查是否可安全删除。",
+                    text = "This asset is not referenced by any other assets. It may be an unused redundant resource. Consider checking if it can be safely deleted.",
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onErrorContainer
                 )

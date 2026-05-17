@@ -25,7 +25,7 @@ import com.example.ue5analyzer.ui.screens.StatsScreen
 import com.example.ue5analyzer.ui.viewmodel.MainViewModel
 
 /**
- * 主屏幕 - 底部导航容器
+ * Main Screen - Bottom Navigation Container
  */
 @Composable
 fun MainScreen(
@@ -36,7 +36,7 @@ fun MainScreen(
     val navBackStackEntry by navController.currentBackStackEntryAsState()
     val currentDestination = navBackStackEntry?.destination
     
-    // 判断是否显示底部导航栏
+    // Determine whether to show bottom navigation bar
     val showBottomBar = when (currentDestination?.route) {
         Screen.AssetDetail.route -> false
         Screen.ProjectList.route -> false
@@ -62,13 +62,13 @@ fun MainScreen(
                             } == true,
                             onClick = {
                                 navController.navigate(item.screen.route) {
-                                    // 弹出到导航图的起始目的地
+                                    // Pop to the start destination of navigation graph
                                     popUpTo(navController.graph.findStartDestination().id) {
                                         saveState = true
                                     }
-                                    // 避免创建多个相同的目的地
+                                    // Avoid creating multiple instances of the same destination
                                     launchSingleTop = true
-                                    // 恢复之前保存的状态
+                                    // Restore previously saved state
                                     restoreState = true
                                 }
                             }
@@ -83,7 +83,7 @@ fun MainScreen(
             startDestination = Screen.Scan.route,
             modifier = Modifier.padding(innerPadding)
         ) {
-            // 扫描页面
+            // Scan screen
             composable(Screen.Scan.route) {
                 ScanScreen(
                     viewModel = viewModel,
@@ -97,17 +97,17 @@ fun MainScreen(
                 )
             }
             
-            // 统计页面
+            // Stats screen
             composable(Screen.Stats.route) {
                 StatsScreen(viewModel = viewModel)
             }
             
-            // 报告页面
+            // Report screen
             composable(Screen.Report.route) {
                 ReportScreen(viewModel = viewModel)
             }
             
-            // 资源详情页面
+            // Asset Detail Screen
             composable(
                 route = Screen.AssetDetail.route,
                 arguments = listOf(
@@ -120,13 +120,13 @@ fun MainScreen(
                     viewModel = viewModel,
                     onBackClick = { navController.popBackStack() },
                     onAssetClick = { clickedAssetId ->
-                        // 允许深度导航，每次进入详情都加入 back stack
+                        // Allow deep navigation, add each detail to back stack
                         navController.navigate(Screen.AssetDetail.createRoute(clickedAssetId))
                     }
                 )
             }
             
-            // 历史项目列表页面
+            // History Projects list screen
             composable(Screen.ProjectList.route) {
                 ProjectListScreen(
                     projects = viewModel.projects.collectAsState(initial = emptyList()).value,

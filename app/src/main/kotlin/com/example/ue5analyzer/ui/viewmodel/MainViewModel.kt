@@ -31,115 +31,115 @@ import kotlinx.coroutines.CoroutineScope
 import androidx.compose.runtime.mutableStateListOf
 
 /**
- * 主 ViewModel
- * 采用 region 分区组织代码，将不同职责的逻辑分离到不同区域
+ * Main ViewModel
+ * Organized with regions to separate different responsibilities
  */
 class MainViewModel(application: Application) : AndroidViewModel(application) {
     
-    // region 依赖注入
+    // region Dependency injection
     private val context = application
     
-    // 数据库（单例）
+    // Database (Singleton)
     private val db = AppDatabase.getDatabase(context)
     
-    // Repository 层（单例，封装数据库和网络的单点访问）
+    // Repository Layer (Singleton, encapsulates single-point database and network access)
     private val projectRepository = ProjectRepository(db)
     private val assetRepository = AssetRepository(db)
     
-    // 解析器
+    // Parser
     private val parser = UEProjectParser(context)
     private val analyzer = AssetAnalyzer()
     private val reportGenerator = ReportGenerator(context)
     
-    // ScanConfig 管理器
+    // ScanConfig Manager
     val scanConfigManager = ScanConfigManager(context)
     
-    // 选择管理器
+    // Selection Manager
     private val selectionManager = SelectionManager()
     // endregion
     
-    // region UI 状态
+    // region UI state
     private val _uiState = MutableStateFlow<UiState>(UiState.Idle)
     val uiState: StateFlow<UiState> = _uiState.asStateFlow()
     
-    // 扫描进度
+    // Scan Progress
     private val _scanProgress = MutableStateFlow<ScanProgress?>(null)
     val scanProgress: StateFlow<ScanProgress?> = _scanProgress.asStateFlow()
     
-    // 当前项目
+    // Current Project
     private val _currentProject = MutableStateFlow<ProjectEntity?>(null)
     val currentProject: StateFlow<ProjectEntity?> = _currentProject.asStateFlow()
     
-    // 资产列表
+    // Asset List
     private val _assets = MutableStateFlow<List<UEAsset>>(emptyList())
     val assets: StateFlow<List<UEAsset>> = _assets.asStateFlow()
     
-    // 过滤后的资产
+    // Filtered Assets
     private val _filteredAssets = MutableStateFlow<List<UEAsset>>(emptyList())
     val filteredAssets: StateFlow<List<UEAsset>> = _filteredAssets.asStateFlow()
     
-    // 项目列表（通过 Repository 获取）
+    // Project List (obtained via Repository)
     val projects = projectRepository.getAllProjects()
         .map { it.map { entity -> entity.toModel() } }
         .stateIn(viewModelScope, SharingStarted.Lazily, emptyList())
     
-    // 当前报告
+    // Current Report
     private val _currentReport = MutableStateFlow<AnalysisReport?>(null)
     val currentReport: StateFlow<AnalysisReport?> = _currentReport.asStateFlow()
     // endregion
     
-    // region 搜索与筛选状态
-    // 搜索关键词
+    // region Search and filter state
+    // Search Keyword
     private val _searchQuery = MutableStateFlow("")
     val searchQuery: StateFlow<String> = _searchQuery.asStateFlow()
     
-    // 筛选类型
+    // Filter by Type
     private val _filterType = MutableStateFlow<AssetType?>(null)
     val filterType: StateFlow<AssetType?> = _filterType.asStateFlow()
     
-    // 排序方式
+    // Sort Order
     private val _sortOrder = MutableStateFlow(SortOrder.NAME)
     val sortOrder: StateFlow<SortOrder> = _sortOrder.asStateFlow()
     
-    // 只看孤立资源
+    // Show Orphan Only
     private val _showOrphanOnly = MutableStateFlow(false)
     val showOrphanOnly: StateFlow<Boolean> = _showOrphanOnly.asStateFlow()
     
-    // 孤立风险等级筛选
+    // Orphan Risk Level Filter
     private val _orphanRiskLevelFilter = MutableStateFlow<OrphanRiskLevel?>(null)
     val orphanRiskLevelFilter: StateFlow<OrphanRiskLevel?> = _orphanRiskLevelFilter.asStateFlow()
     // endregion
     
-    // region 选择状态
-    // 批量选择状态
+    // region Selection state
+    // Batch Selection State
     private val _selectedAssetIds = mutableStateListOf<String>()
     val selectedAssetIds: List<String> = _selectedAssetIds
     
-    // 选择模式状态
+    // Selection Mode State
     private val _isSelectionMode = MutableStateFlow(false)
     val isSelectionMode: StateFlow<Boolean> = _isSelectionMode.asStateFlow()
     // endregion
     
-    // region ScanConfig 状态
+    // region ScanConfig state
     // ScanConfig Flow
     val scanConfigFlow = scanConfigManager.scanConfigFlow
         .stateIn(viewModelScope, SharingStarted.Eagerly, ScanConfig.DEFAULT)
     // endregion
     
-    // region 私有变量
-    // 扫描协程任务
+    // region Private variables
+    // Scan Coroutine Job
     private var scanJob: Job? = null
     
-    // 过滤操作互斥锁，确保线程安全
+    // Filter operation mutex for thread safety
     private val filterMutex = Mutex()
     
-    // 搜索防抖任务
+    // Search Debounce Job
     private var searchJob: Job? = null
     // endregion
     
-    // region 扫描相关方法
+    // region Scan related methods
     /**
-     * 扫描项目
+     * Scan Project
      */
     fun scanProject(uri: Uri) {
         scanJob?.cancel()
@@ -148,16 +148,16 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             _scanProgress.value = ScanProgress(scannedCount = 0, totalCount = 0, currentFile = "")
             
             try {
-                // SAF 权限持久化检查
+                // SAF Permission Persistence Check
                 val hasPermission = context.contentResolver.persistedUriPermissions
                     .any { it.uri == uri && it.isReadPermission }
                 if (!hasPermission) {
                     _scanProgress.value = null
-                    _uiState.value = UiState.Error("存储权限已过期，请重新选择项目文件夹", ErrorReason.PERMISSION_DENIED)
+                    _uiState.value = UiState.Error("Storage permission expired. Please select the project folder again.", ErrorReason.PERMISSION_DENIED)
                     return@launch
                 }
                 
-                // 带进度回调的扫描
+                // Scanning with progress callback
                 val scanResult = parser.scanProject(
                     projectUri = uri,
                     onProgress = { count: Int, total: Int, name: String ->
@@ -165,12 +165,12 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                     }
                 )
                 
-                // 保存项目
-                // 使用 Repository 直接查询，避免加载所有项目后过滤
+                // Save Project
+                // Use Repository for direct query instead of loading all projects then filtering
                 val existingProject = projectRepository.getProjectByName(scanResult.projectName)
                 
                 val projectId = if (existingProject != null) {
-                    // 更新已有项目
+                    // Update existing project
                     assetRepository.deleteAssetsByProject(existingProject.id)
                     projectRepository.insertProject(existingProject.copy(
                         totalAssets = scanResult.totalAssets,
@@ -193,7 +193,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                 projectRepository.insertProject(projectEntity)
                 _currentProject.value = projectEntity
                 
-                // 保存所有资产（而非只存孤立资产）
+                // Save all assets (not just orphan assets)
                 val assetEntities = scanResult.allAssets.map { asset ->
                     AssetEntity(
                         id = asset.id,
@@ -211,18 +211,18 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                 }
                 assetRepository.insertAssets(assetEntities)
                 
-                // 更新资产列表（使用所有资产）
+                // Update asset list (use all assets)
                 _assets.value = scanResult.allAssets
                 
-                // 生成报告
+                // Generate report
                 val report = analyzer.generateReport(
                     scanResult.projectPath,
                     scanResult.projectName,
-                    scanResult.allAssets  // 使用所有资产生成报告
+                    scanResult.allAssets  // Generate report using all assets
                 )
                 _currentReport.value = report
                 
-                // 清除进度
+                // Clear progress
                 _scanProgress.value = null
                 
                 _uiState.value = UiState.Success(scanResult)
@@ -231,16 +231,16 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                 _uiState.value = UiState.Idle
             } catch (e: java.io.IOException) {
                 _scanProgress.value = null
-                _uiState.value = UiState.Error("文件读取失败: ${e.message}", ErrorReason.IO_ERROR)
+                _uiState.value = UiState.Error("File read failed: ${e.message}", ErrorReason.IO_ERROR)
             } catch (e: Exception) {
                 _scanProgress.value = null
-                _uiState.value = UiState.Error(e.message ?: "扫描失败", ErrorReason.UNKNOWN)
+                _uiState.value = UiState.Error(e.message ?: "Scan failed", ErrorReason.UNKNOWN)
             }
         }
     }
     
     /**
-     * 带配置扫描项目
+     * Scan project with config
      */
     fun scanProjectWithConfig(uri: Uri, config: ScanConfig) {
         scanJob?.cancel()
@@ -249,16 +249,16 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             _scanProgress.value = ScanProgress(scannedCount = 0, totalCount = 0, currentFile = "")
             
             try {
-                // SAF 权限持久化检查
+                // SAF Permission Persistence Check
                 val hasPermission = context.contentResolver.persistedUriPermissions
                     .any { it.uri == uri && it.isReadPermission }
                 if (!hasPermission) {
                     _scanProgress.value = null
-                    _uiState.value = UiState.Error("存储权限已过期，请重新选择项目文件夹", ErrorReason.PERMISSION_DENIED)
+                    _uiState.value = UiState.Error("Storage permission expired. Please select the project folder again.", ErrorReason.PERMISSION_DENIED)
                     return@launch
                 }
                 
-                // 带进度回调的扫描（传入 ScanConfig）
+                // Scanning with progress callback (with ScanConfig)
                 val scanResult = parser.scanProject(
                     projectUri = uri,
                     onProgress = { count: Int, total: Int, name: String ->
@@ -267,7 +267,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                     scanConfig = config
                 )
                 
-                // 保存项目
+                // Save Project
                 val existingProject = projectRepository.getProjectByName(scanResult.projectName)
                 
                 val projectId = if (existingProject != null) {
@@ -293,7 +293,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                 projectRepository.insertProject(projectEntity)
                 _currentProject.value = projectEntity
                 
-                // 保存所有资产
+                // Save all assets
                 val assetEntities = scanResult.allAssets.map { asset ->
                     AssetEntity(
                         id = asset.id,
@@ -311,10 +311,10 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                 }
                 assetRepository.insertAssets(assetEntities)
                 
-                // 更新资产列表
+                // Update asset list
                 _assets.value = scanResult.allAssets
                 
-                // 生成报告
+                // Generate report
                 val report = analyzer.generateReport(
                     scanResult.projectPath,
                     scanResult.projectName,
@@ -322,7 +322,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                 )
                 _currentReport.value = report
                 
-                // 清除进度
+                // Clear progress
                 _scanProgress.value = null
                 
                 _uiState.value = UiState.Success(scanResult)
@@ -331,16 +331,16 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                 _uiState.value = UiState.Idle
             } catch (e: java.io.IOException) {
                 _scanProgress.value = null
-                _uiState.value = UiState.Error("文件读取失败: ${e.message}", ErrorReason.IO_ERROR)
+                _uiState.value = UiState.Error("File read failed: ${e.message}", ErrorReason.IO_ERROR)
             } catch (e: Exception) {
                 _scanProgress.value = null
-                _uiState.value = UiState.Error(e.message ?: "扫描失败", ErrorReason.UNKNOWN)
+                _uiState.value = UiState.Error(e.message ?: "Scan failed", ErrorReason.UNKNOWN)
             }
         }
     }
     
     /**
-     * 取消扫描
+     * Cancel Scan
      */
     fun cancelScan() {
         scanJob?.cancel()
@@ -350,7 +350,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     }
     
     /**
-     * 加载项目
+     * Load Project
      */
     fun loadProject(projectId: String) {
         viewModelScope.launch {
@@ -361,7 +361,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             val loadedAssets = assetEntities.map { it.toModel() }
             _assets.value = loadedAssets
             
-            // 重新生成报告
+            // Regenerate Report
             val report = analyzer.generateReport(
                 project?.path ?: "",
                 project?.name ?: "",
@@ -384,7 +384,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     }
     
     /**
-     * 删除项目
+     * Delete Project
      */
     fun deleteProject(projectId: String) {
         viewModelScope.launch {
@@ -394,9 +394,9 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     }
     // endregion
     
-    // region ScanConfig 方法
+    // region ScanConfig methods
     /**
-     * 更新 ScanConfig
+     * Update ScanConfig
      */
     fun updateScanConfig(config: ScanConfig) {
         viewModelScope.launch {
@@ -405,7 +405,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     }
     
     /**
-     * 更新忽略目录
+     * Update Ignored Directories
      */
     fun updateIgnoredDirectories(directories: Set<String>) {
         viewModelScope.launch {
@@ -414,7 +414,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     }
     
     /**
-     * 更新忽略扩展名
+     * Update Ignored Extensions
      */
     fun updateIgnoredExtensions(extensions: Set<String>) {
         viewModelScope.launch {
@@ -423,9 +423,9 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     }
     // endregion
     
-    // region 搜索与筛选方法
+    // region Search and filter methods
     /**
-     * 搜索资产（带300ms防抖）
+     * Search Assets (with 300ms debounce)
      */
     fun searchAssets(query: String) {
         _searchQuery.value = query
@@ -437,7 +437,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     }
     
     /**
-     * 筛选类型
+     * Filter by Type
      */
     fun filterByType(type: AssetType?) {
         _filterType.value = type
@@ -445,7 +445,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     }
     
     /**
-     * 设置排序方式
+     * Set Sort Order
      */
     fun setSortOrder(order: SortOrder) {
         _sortOrder.value = order
@@ -453,7 +453,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     }
     
     /**
-     * 设置是否只看孤立资源
+     * Set Show Orphan Only
      */
     fun setShowOrphanOnly(show: Boolean) {
         _showOrphanOnly.value = show
@@ -461,7 +461,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     }
     
     /**
-     * 设置孤立风险等级筛选
+     * Set Orphan Risk Level Filter
      */
     fun setOrphanRiskLevelFilter(level: OrphanRiskLevel?) {
         _orphanRiskLevelFilter.value = level
@@ -469,8 +469,8 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     }
     
     /**
-     * 应用过滤条件和排序
-     * 使用 Mutex 确保线程安全，防止并发访问冲突
+     * Apply Filters and Sort
+     * Use Mutex for thread safety, preventing concurrent access conflicts
      */
     private fun applyFilters() {
         viewModelScope.launch {
@@ -490,9 +490,9 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     }
     // endregion
     
-    // region 报告方法
+    // region Report methods
     /**
-     * 导出报告
+     * Export Report
      */
     fun exportReport(uri: Uri): Boolean {
         val report = _currentReport.value ?: return false
@@ -500,27 +500,27 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     }
     
     /**
-     * 分享报告
+     * Share Report
      */
     fun shareReport() = _currentReport.value?.let { 
         reportGenerator.shareReport(it) 
     }
     // endregion
     
-    // region 选择相关方法
+    // region Selection related methods
     /**
-     * 切换选择模式
+     * Toggle Selection Mode
      */
     fun toggleSelectionMode() {
         if (_isSelectionMode.value) {
-            // 退出选择模式时清空选择
+            // Clear selection when exiting selection mode
             clearSelection()
         }
         _isSelectionMode.value = !_isSelectionMode.value
     }
     
     /**
-     * 退出选择模式
+     * Exit Selection Mode
      */
     fun exitSelectionMode() {
         clearSelection()
@@ -528,7 +528,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     }
     
     /**
-     * 切换资源选择状态
+     * Toggle Asset Selection
      */
     fun toggleAssetSelection(assetId: String) {
         if (_selectedAssetIds.contains(assetId)) {
@@ -539,14 +539,14 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     }
     
     /**
-     * 清空所有选择
+     * Clear All Selection
      */
     fun clearSelection() {
         _selectedAssetIds.clear()
     }
     
     /**
-     * 全选当前显示的资源
+     * Select All Currently Displayed Assets
      */
     fun selectAll() {
         _selectedAssetIds.clear()
@@ -554,31 +554,31 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     }
     
     /**
-     * 获取选中的资源对象列表
+     * Get Selected Asset List
      */
     fun getSelectedAssets(): List<UEAsset> {
         return _filteredAssets.value.filter { _selectedAssetIds.contains(it.id) }
     }
     
     /**
-     * 导出选中资源列表为 Markdown 格式
+     * Export Selected Assets as Markdown
      */
     fun exportSelectedAssets(): String {
         val selectedAssets = getSelectedAssets()
         if (selectedAssets.isEmpty()) {
-            return "# 选中资源列表\n\n未选择任何资源"
+            return "# Selected Assets\n\nNo assets selected"
         }
         
         val totalSize = selectedAssets.sumOf { it.size }
         val builder = StringBuilder()
-        builder.appendLine("# 选中资源列表")
+        builder.appendLine("# Selected Assets")
         builder.appendLine()
-        builder.appendLine("**总计**: ${selectedAssets.size} 个资源")
-        builder.appendLine("**总大小**: ${formatFileSize(totalSize)}")
+        builder.appendLine("**Total**: ${selectedAssets.size} assets")
+        builder.appendLine("**Total Size**: ${formatFileSize(totalSize)}")
         builder.appendLine()
         builder.appendLine("---")
         builder.appendLine()
-        builder.appendLine("| 名称 | 类型 | 大小 | 路径 |")
+        builder.appendLine("| Name | Type | Size | Path |")
         builder.appendLine("|------|------|------|------|")
         
         selectedAssets.sortedBy { it.name.lowercase() }.forEach { asset ->
@@ -591,15 +591,15 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         
         builder.appendLine()
         builder.appendLine("---")
-        builder.appendLine("* 由 UE5 Asset Analyzer 生成 *")
+        builder.appendLine("* Generated by UE5 Asset Analyzer *")
         
         return builder.toString()
     }
     // endregion
     
-    // region 工具方法
+    // region Utility methods
     /**
-     * 格式化文件大小
+     * Format File Size
      */
     private fun formatFileSize(bytes: Long): String {
         return when {
@@ -612,9 +612,9 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     // endregion
 }
 
-// region 数据类和扩展
+// region Data classes and extensions
 /**
- * UI 状态
+ * UI State
  */
 sealed class UiState {
     object Idle : UiState()
@@ -627,15 +627,15 @@ sealed class UiState {
 }
 
 enum class ErrorReason {
-    PERMISSION_DENIED,   // SAF 权限过期
-    PROJECT_EMPTY,       // 项目没有 .uasset 文件
-    PARSE_FAILED,        // 解析失败
-    IO_ERROR,           // IO 错误
-    UNKNOWN             // 未知错误
+    PERMISSION_DENIED,   // SAF Permission Expired
+    PROJECT_EMPTY,       // Project has no .uasset files
+    PARSE_FAILED,        // Parse Failed
+    IO_ERROR,           // IO Error
+    UNKNOWN             // Unknown error
 }
 
 /**
- * 扫描进度
+ * Scan Progress
  */
 data class ScanProgress(
     val scannedCount: Int,
@@ -644,17 +644,17 @@ data class ScanProgress(
 )
 
 /**
- * 排序方式
+ * Sort Order
  */
 enum class SortOrder(val displayName: String) {
-    NAME("按名称"),
-    SIZE_DESC("按大小"),
-    REFS_DESC("按引用数"),
-    TYPE("按类型")
+    NAME("By Name"),
+    SIZE_DESC("By Size"),
+    REFS_DESC("By References"),
+    TYPE("By Type")
 }
 
 /**
- * 扩展函数：实体转模型
+ * Extension Function: Entity to Model
  */
 fun ProjectEntity.toModel() = ProjectInfo(
     id = id,
@@ -669,19 +669,19 @@ fun AssetEntity.toModel() = UEAsset(
     id = id,
     name = name,
     path = path,
-    // 使用 entries.find 替代 valueOf，防止未知类型抛异常
+    // Use entries.find instead of valueOf to prevent unknown types throwing exceptions
     type = AssetType.entries.find { it.name == type } ?: AssetType.UNKNOWN,
     size = size,
     dependencies = Json.decodeFromString(dependencies),
     references = Json.decodeFromString(references),
     isOrphan = isOrphan,
-    // 使用 entries.find 替代 valueOf，防止未知风险等级抛异常
+    // Use entries.find instead of valueOf to prevent unknown risk levels throwing exceptions
     orphanRiskLevel = OrphanRiskLevel.entries.find { it.name == orphanRiskLevel } ?: OrphanRiskLevel.NONE,
     lastModified = lastModified
 )
 
 /**
- * 项目信息（简化版）
+ * Project Info (Simplified)
  */
 data class ProjectInfo(
     val id: String,

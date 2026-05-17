@@ -1,30 +1,30 @@
 package com.example.ue5analyzer.model
 
 /**
- * UE5 资源类型枚举
+ * UE5 Asset Type Enumeration
  */
 enum class AssetType(val displayName: String, val prefix: String) {
-    BLUEPRINT("蓝图", "BP_"),
-    STATIC_MESH("静态网格", "SM_"),
-    SKELETAL_MESH("骨骼网格", "SK_"),
-    MATERIAL("材质", "M_"),
-    MATERIAL_INSTANCE("材质实例", "MI_"),
-    TEXTURE("贴图", "T_"),
-    SOUND("音效", "S_"),
-    PARTICLE_SYSTEM("粒子系统", "P_"),
-    ANIMATION("动画", "A_"),
-    LEVEL("关卡", "LVL_"),
-    WIDGET("UMG控件", "WBP_"),
-    ENUM("枚举", "E_"),
-    STRUCT("结构体", "F_"),
-    INTERFACE("接口", "I_"),
-    DATA_TABLE("数据表", "DT_"),
-    CURVE("曲线", "CR_"),
-    UNKNOWN("未知", "");
+    BLUEPRINT("Blueprint", "BP_"),
+    STATIC_MESH("Static Mesh", "SM_"),
+    SKELETAL_MESH("Skeletal Mesh", "SK_"),
+    MATERIAL("Material", "M_"),
+    MATERIAL_INSTANCE("Material Instance", "MI_"),
+    TEXTURE("Texture", "T_"),
+    SOUND("Sound", "S_"),
+    PARTICLE_SYSTEM("Particle System", "P_"),
+    ANIMATION("Animation", "A_"),
+    LEVEL("Level", "LVL_"),
+    WIDGET("UMG Widget", "WBP_"),
+    ENUM("Enumeration", "E_"),
+    STRUCT("Struct", "F_"),
+    INTERFACE("Interface", "I_"),
+    DATA_TABLE("Data Table", "DT_"),
+    CURVE("Curve", "CR_"),
+    UNKNOWN("Unknown", "");
 
     companion object {
         fun fromName(name: String): AssetType {
-            // 先匹配有明确前缀的
+            // First match with explicit prefix
             val matched = values().filter { it.prefix.isNotEmpty() }.find { name.startsWith(it.prefix) }
             return matched ?: UNKNOWN
         }
@@ -32,16 +32,16 @@ enum class AssetType(val displayName: String, val prefix: String) {
 }
 
 /**
- * 孤立资源风险等级
+ * Orphan Asset Risk Level
  */
 enum class OrphanRiskLevel {
-    NONE,   // 无风险（引用数>=2）
-    LOW,    // 低风险（引用数=1）
-    HIGH    // 高风险（引用数=0且非关卡）
+    NONE,   // No risk (references >= 2)
+    LOW,    // Low risk (references = 1)
+    HIGH    // High risk (references = 0, non-level)
 }
 
 /**
- * UE5 资源数据模型
+ * UE5 Asset Data Model
  */
 data class UEAsset(
     val id: String,
@@ -57,7 +57,7 @@ data class UEAsset(
 )
 
 /**
- * 项目扫描结果
+ * Project Scan Result
  */
 data class ScanResult(
     val projectPath: String,
@@ -65,13 +65,13 @@ data class ScanResult(
     val totalAssets: Int,
     val totalSize: Long,
     val assetsByType: Map<AssetType, Int>,
-    val allAssets: List<UEAsset>,    // 所有扫描到的资源
-    val orphanAssets: List<UEAsset>, // 孤立资源（allAssets的子集）
+    val allAssets: List<UEAsset>,    // All scanned assets
+    val orphanAssets: List<UEAsset>, // Orphan assets (subset of allAssets)
     val scanTime: Long = System.currentTimeMillis()
 )
 
 /**
- * 依赖图节点
+ * Dependency Graph Node
  */
 data class DependencyNode(
     val assetId: String,
@@ -82,7 +82,7 @@ data class DependencyNode(
 )
 
 /**
- * 分析报告
+ * Analysis Report
  */
 data class AnalysisReport(
     val projectPath: String,

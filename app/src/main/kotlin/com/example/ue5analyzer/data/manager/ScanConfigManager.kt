@@ -11,8 +11,8 @@ import kotlinx.coroutines.flow.map
 private val Context.dataStore: DataStore<Preferences> by preferencesDataStore(name = "scan_config")
 
 /**
- * ScanConfig 管理器
- * 负责 ScanConfig 的持久化和读取
+ * ScanConfig Manager
+ * Responsible for ScanConfig persistence and reading
  */
 class ScanConfigManager(private val context: Context) {
     
@@ -32,7 +32,7 @@ class ScanConfigManager(private val context: Context) {
     }
     
     /**
-     * 获取 ScanConfig Flow
+     * Get ScanConfig Flow
      */
     val scanConfigFlow: Flow<ScanConfig> = context.dataStore.data.map { preferences ->
         ScanConfig(
@@ -44,7 +44,7 @@ class ScanConfigManager(private val context: Context) {
     }
     
     /**
-     * 保存 ScanConfig
+     * Save ScanConfig
      */
     suspend fun saveScanConfig(config: ScanConfig) {
         context.dataStore.edit { preferences ->
@@ -56,7 +56,7 @@ class ScanConfigManager(private val context: Context) {
     }
     
     /**
-     * 更新忽略目录
+     * Update Ignored Directories
      */
     suspend fun updateIgnoredDirectories(directories: Set<String>) {
         context.dataStore.edit { preferences ->
@@ -65,7 +65,7 @@ class ScanConfigManager(private val context: Context) {
     }
     
     /**
-     * 更新忽略扩展名
+     * Update Ignored Extensions
      */
     suspend fun updateIgnoredExtensions(extensions: Set<String>) {
         context.dataStore.edit { preferences ->

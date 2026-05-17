@@ -9,41 +9,41 @@ import java.text.SimpleDateFormat
 import java.util.*
 
 /**
- * 报告生成器
+ * Report Generator
  */
 class ReportGenerator(private val context: Context) {
     
     private val dateFormat = SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.getDefault())
     
     /**
-     * 生成 Markdown 格式报告
+     * Generate Markdown Report
      */
     fun generateMarkdownReport(report: AnalysisReport): String {
         return buildString {
-            appendLine("# UE5 项目资源分析报告")
+            appendLine("# UE5 Project Asset Analysis Report")
             appendLine()
-            appendLine("**项目名称**: ${report.projectName}")
+            appendLine("**Project Name**: ${report.projectName}")
             appendLine()
-            appendLine("**生成时间**: ${dateFormat.format(Date(report.generatedAt))}")
+            appendLine("**Generated At**: ${dateFormat.format(Date(report.generatedAt))}")
             appendLine()
             appendLine("---")
             appendLine()
             
-            // 概览
-            appendLine("## 概览")
+            // Overview
+            appendLine("## Overview")
             appendLine()
-            appendLine("| 指标 | 数值 |")
+            appendLine("| Metric | Value |")
             appendLine("|-----|------|")
-            appendLine("| 总资源数 | ${report.totalAssets} |")
-            appendLine("| 总大小 | ${FormatUtils.formatFileSize(report.totalSize)} |")
-            appendLine("| 孤立资源 | ${report.orphanCount} |")
-            appendLine("| 健康度 | ${report.healthScore}% |")
+            appendLine("| Total Assets | ${report.totalAssets} |")
+            appendLine("| Total Size | ${FormatUtils.formatFileSize(report.totalSize)} |")
+            appendLine("| Orphan Assets | ${report.orphanCount} |")
+            appendLine("| Health Score | ${report.healthScore}% |")
             appendLine()
             
-            // 资源类型分布
-            appendLine("## 资源类型分布")
+            // Asset Type Distribution
+            appendLine("## Asset Type Distribution")
             appendLine()
-            appendLine("| 类型 | 数量 | 占比 |")
+            appendLine("| Type | Count | Percentage |")
             appendLine("|-----|------|------|")
             report.assetsByType.entries
                 .sortedByDescending { it.value }
@@ -53,33 +53,33 @@ class ReportGenerator(private val context: Context) {
                 }
             appendLine()
             
-            // 最大的资源
-            appendLine("## 最大的资源 TOP 10")
+            // Largest assets
+            appendLine("## Largest Assets TOP 10")
             appendLine()
-            appendLine("| 资源名称 | 类型 | 大小 |")
+            appendLine("| Asset Name | Type | Size |")
             appendLine("|---------|------|------|")
             report.largestAssets.forEach { asset ->
                 appendLine("| ${asset.name} | ${asset.type.displayName} | ${FormatUtils.formatFileSize(asset.size)} |")
             }
             appendLine()
             
-            // 被引用最多的资源
-            appendLine("## 被引用最多的资源 TOP 10")
+            // Most referenced assets
+            appendLine("## Most Referenced Assets TOP 10")
             appendLine()
-            appendLine("| 资源名称 | 类型 | 引用数 |")
+            appendLine("| Asset Name | Type | References |")
             appendLine("|---------|------|--------|")
             report.mostReferenced.forEach { asset ->
                 appendLine("| ${asset.name} | ${asset.type.displayName} | ${asset.references.size} |")
             }
             appendLine()
             
-            // 孤立资源
+            // Orphan Assets
             if (report.orphanAssets.isNotEmpty()) {
-                appendLine("## 孤立资源")
+                appendLine("## Orphan Assets")
                 appendLine()
-                appendLine("> 以下资源没有被任何其他资源引用，可能是冗余资源")
+                appendLine("> The following assets are not referenced by any other assets and may be redundant resources")
                 appendLine()
-                appendLine("| 资源名称 | 类型 | 大小 |")
+                appendLine("| Asset Name | Type | Size |")
                 appendLine("|---------|------|------|")
                 report.orphanAssets.forEach { asset ->
                     appendLine("| ${asset.name} | ${asset.type.displayName} | ${FormatUtils.formatFileSize(asset.size)} |")
@@ -87,15 +87,15 @@ class ReportGenerator(private val context: Context) {
                 appendLine()
             }
             
-            // 循环依赖
-            appendLine("## 循环依赖")
+            // Circular Dependencies
+            appendLine("## Circular Dependencies")
             appendLine()
             if (report.circularDependencies.isEmpty()) {
-                appendLine("未检测到循环依赖 ✅")
+                appendLine("No circular dependencies detected ✅")
             } else {
-                appendLine("> 以下资源存在循环引用关系，可能导致加载问题")
+                appendLine("> The following assets have circular reference relationships that may cause loading issues")
                 appendLine()
-                appendLine("| 循环路径 |")
+                appendLine("| Circular Path |")
                 appendLine("|---------|")
                 report.circularDependencies.forEach { cycle ->
                     val pathStr = cycle.joinToString(" → ") + " → " + cycle.firstOrNull().orEmpty()
@@ -104,29 +104,29 @@ class ReportGenerator(private val context: Context) {
             }
             appendLine()
             
-            // 建议
-            appendLine("## 优化建议")
+            // Suggestions
+            appendLine("## Optimization Suggestions")
             appendLine()
             if (report.orphanCount > 0) {
-                appendLine("- 发现 ${report.orphanCount} 个孤立资源，建议检查是否可以删除")
+                appendLine("- Found ${report.orphanCount} orphan assets. Consider checking if they can be deleted.")
             }
             val largeAssets = report.largestAssets.filter { it.size > 10 * 1024 * 1024 }
             if (largeAssets.isNotEmpty()) {
-                appendLine("- 发现 ${largeAssets.size} 个超过 10MB 的大型资源，建议优化压缩")
+                appendLine("- Found ${largeAssets.size} large assets over 10MB. Consider optimizing and compressing them.")
             }
             if (report.circularDependencies.isNotEmpty()) {
-                appendLine("- 发现 ${report.circularDependencies.size} 个循环依赖，建议解除以避免加载问题")
+                appendLine("- Found ${report.circularDependencies.size} circular dependencies. Consider resolving them to avoid loading issues.")
             }
             appendLine()
             
             appendLine("---")
             appendLine()
-            appendLine("*报告由 UE5 Asset Analyzer 生成*")
+            appendLine("*Report generated by UE5 Asset Analyzer*")
         }
     }
     
     /**
-     * 导出报告到文件
+     * Export report to file
      */
     fun exportReport(report: AnalysisReport, uri: Uri): Boolean {
         return try {
@@ -142,15 +142,15 @@ class ReportGenerator(private val context: Context) {
     }
     
     /**
-     * 分享报告
+     * Share Report
      */
     fun shareReport(report: AnalysisReport): Intent {
         val content = generateMarkdownReport(report)
         val intent = Intent(Intent.ACTION_SEND).apply {
             type = "text/plain"
-            putExtra(Intent.EXTRA_SUBJECT, "UE5 项目分析报告 - ${report.projectName}")
+            putExtra(Intent.EXTRA_SUBJECT, "UE5 Project Analysis Report - ${report.projectName}")
             putExtra(Intent.EXTRA_TEXT, content)
         }
-        return Intent.createChooser(intent, "分享报告")
+        return Intent.createChooser(intent, "Share Report")
     }
 }

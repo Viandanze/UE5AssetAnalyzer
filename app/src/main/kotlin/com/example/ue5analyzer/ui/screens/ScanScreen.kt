@@ -1,6 +1,7 @@
 package com.example.ue5analyzer.ui.screens
 
 import android.net.Uri
+import android.content.Intent
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.clickable
@@ -38,7 +39,7 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
 /**
- * 扫描页面 - 原 MainScreen 的扫描和列表功能
+ * Scan Screen - Original MainScreen scan and list functionality
  */
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -61,42 +62,43 @@ fun ScanScreen(
     val scanProgress by viewModel.scanProgress.collectAsState()
     val scanConfig by viewModel.scanConfigFlow.collectAsState()
     
-    // 选择模式状态
+    // Selection Mode State
     val isSelectionMode by viewModel.isSelectionMode.collectAsState()
     val selectedAssetIds = viewModel.selectedAssetIds
     
     val context = LocalContext.current
     
-    // Snackbar 状态
+    // Snackbar State
     val snackbarHostState = remember { SnackbarHostState() }
     
-    // 协程作用域
+    // Coroutine Scope
     val scope = rememberCoroutineScope()
     
-    // 设置对话框状态
+    // Settings Dialog State
     var showSettingsDialog by remember { mutableStateOf(false) }
     
-    // 主题状态
+    // Theme State
     var currentThemeMode by remember { mutableStateOf(ThemeMode.SYSTEM) }
     
-    // 收集主题偏好
+    // Collect Theme Preferences
     LaunchedEffect(themePreferencesManager) {
         themePreferencesManager?.themeModeFlow?.collect { mode ->
             currentThemeMode = mode
         }
     }
     
-    // 文件选择器
+    // File Picker
     val projectPicker = rememberLauncherForActivityResult(
         ActivityResultContracts.OpenDocumentTree()
     ) { uri: Uri? ->
         uri?.let { 
-            // 如果有自定义配置，先保存再扫描
+            // Acquire persistent read permission for the selected directory
+            context.contentResolver.takePersistableUriPermission(it, Intent.FLAG_GRANT_READ_URI_PERMISSION)
             viewModel.scanProject(it) 
         }
     }
     
-    // 导出选中资源
+    // Export Selected Assets
     val exportLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.CreateDocument("text/markdown")
     ) { uri: Uri? ->
@@ -108,14 +110,14 @@ fun ScanScreen(
                 }
                 scope.launch {
                     snackbarHostState.showSnackbar(
-                        message = "已导出 ${viewModel.selectedAssetIds.size} 个资源",
+                        message = "Exported ${viewModel.selectedAssetIds.size} assets",
                         duration = SnackbarDuration.Short
                     )
                 }
             } catch (e: Exception) {
                 scope.launch {
                     snackbarHostState.showSnackbar(
-                        message = "导出失败",
+                        message = "Export failed",
                         duration = SnackbarDuration.Short
                     )
                 }
@@ -123,7 +125,7 @@ fun ScanScreen(
         }
     }
     
-    // 设置对话框
+    // Settings Dialog
     if (showSettingsDialog) {
         ScanConfigDialog(
             currentConfig = scanConfig,
@@ -138,28 +140,28 @@ fun ScanScreen(
     Scaffold(
         topBar = {
             if (isSelectionMode) {
-                // 选择模式顶栏
+                // Selection Mode Top Bar
                 TopAppBar(
-                    title = { Text("已选 ${selectedAssetIds.size} 项") },
+                    title = { Text("${selectedAssetIds.size} selected") },
                     navigationIcon = {
                         IconButton(onClick = { viewModel.exitSelectionMode() }) {
-                            Icon(Icons.Default.Close, "取消选择")
+                            Icon(Icons.Default.Close, "Cancel selection")
                         }
                     },
                     actions = {
                         IconButton(onClick = { viewModel.selectAll() }) {
-                            Icon(Icons.Default.DoneAll, "全选")
+                            Icon(Icons.Default.DoneAll, "Select All")
                         }
                     }
                 )
             } else {
-                // 普通模式顶栏
+                // Normal Mode Top Bar
                 TopAppBar(
                     title = { 
                         Text(currentProject?.name ?: "UE5 Asset Analyzer") 
                     },
                     actions = {
-                        // 主题切换按钮
+                        // Theme Toggle Button
                         if (themePreferencesManager != null) {
                             IconButton(onClick = {
                                 val newMode = when (currentThemeMode) {
@@ -179,30 +181,30 @@ fun ScanScreen(
                                         ThemeMode.DARK -> Icons.Default.Nightlight
                                         else -> Icons.Default.Brightness6
                                     },
-                                    contentDescription = "切换主题"
+                                    contentDescription = "Switch theme"
                                 )
                             }
                         }
                         
-                        // 设置按钮（仅在成功状态显示）
+                        // Settings button (only shown on success)
                         if (uiState is UiState.Success) {
                             IconButton(onClick = { showSettingsDialog = true }) {
-                                Icon(Icons.Default.Build, "扫描设置")
+                                Icon(Icons.Default.Build, "Scan Settings")
                             }
                         }
                         
                         IconButton(onClick = onHistoryClick) {
-                            Icon(Icons.Default.History, "历史项目")
+                            Icon(Icons.Default.History, "History Projects")
                         }
                         IconButton(onClick = { projectPicker.launch(null) }) {
-                            Icon(Icons.Default.FolderOpen, "打开项目")
+                            Icon(Icons.Default.FolderOpen, "Open Project")
                         }
                     }
                 )
             }
         },
         bottomBar = {
-            // 选择模式底部操作栏
+            // Selection mode bottom action bar
             if (isSelectionMode) {
                 SelectionBottomBar(
                     selectedCount = selectedAssetIds.size,
@@ -232,7 +234,7 @@ fun ScanScreen(
             }
             is UiState.Success -> {
                 Column(modifier = Modifier.padding(padding)) {
-                    // 搜索栏 + 选择按钮
+                    // Search bar + selection button
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
@@ -247,18 +249,18 @@ fun ScanScreen(
                         
                         Spacer(modifier = Modifier.width(8.dp))
                         
-                        // 选择按钮
+                        // Selection button
                         FilledTonalIconButton(
                             onClick = { viewModel.toggleSelectionMode() }
                         ) {
                             Icon(
                                 imageVector = if (isSelectionMode) Icons.Default.Check else Icons.Default.Checklist,
-                                contentDescription = if (isSelectionMode) "退出选择" else "选择"
+                                contentDescription = if (isSelectionMode) "Exit selection" else "Select"
                             )
                         }
                     }
                     
-                    // 类型筛选 + 排序
+                    // Type filter + sort
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
@@ -266,21 +268,21 @@ fun ScanScreen(
                         horizontalArrangement = Arrangement.spacedBy(8.dp),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        // 类型筛选
+                        // Type filter
                         TypeFilter(
                             selectedType = filterType,
                             onTypeSelected = { viewModel.filterByType(it) },
                             modifier = Modifier.weight(1f)
                         )
                         
-                        // 排序下拉
+                        // Sort dropdown
                         SortDropdown(
                             selectedOrder = sortOrder,
                             onOrderSelected = { viewModel.setSortOrder(it) }
                         )
                     }
                     
-                    // 只看孤立资源筛选 + 风险等级筛选
+                    // Show orphan only filter + risk level filter
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
@@ -291,13 +293,13 @@ fun ScanScreen(
                         FilterChip(
                             selected = showOrphanOnly,
                             onClick = { viewModel.setShowOrphanOnly(!showOrphanOnly) },
-                            label = { Text("只看孤立") },
+                            label = { Text("Orphan only") },
                             leadingIcon = if (showOrphanOnly) {
                                 { Icon(Icons.Default.Check, contentDescription = null, modifier = Modifier.size(18.dp)) }
                             } else null
                         )
                         
-                        // 风险等级筛选
+                        // Risk level filter
                         OrphanRiskLevelFilter(
                             selectedLevel = orphanRiskLevelFilter,
                             onLevelSelected = { viewModel.setOrphanRiskLevelFilter(it) }
@@ -327,7 +329,7 @@ fun ScanScreen(
 }
 
 /**
- * 扫描配置对话框
+ * Scan configuration dialog
  */
 @Composable
 fun ScanConfigDialog(
@@ -340,14 +342,14 @@ fun ScanConfigDialog(
     
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("扫描设置") },
+        title = { Text("Scan Settings") },
         text = {
             Column(
                 modifier = Modifier.fillMaxWidth(),
                 verticalArrangement = Arrangement.spacedBy(16.dp)
             ) {
                 Text(
-                    text = "忽略目录（每行一个）",
+                    text = "Ignored directories (one per line)",
                     style = MaterialTheme.typography.labelMedium
                 )
                 OutlinedTextField(
@@ -361,7 +363,7 @@ fun ScanConfigDialog(
                 )
                 
                 Text(
-                    text = "忽略扩展名（每行一个，不含点号）",
+                    text = "Ignored extensions (one per line, without dots)",
                     style = MaterialTheme.typography.labelMedium
                 )
                 OutlinedTextField(
@@ -391,12 +393,12 @@ fun ScanConfigDialog(
                 )
                 onSave(newConfig)
             }) {
-                Text("保存")
+                Text("Save")
             }
         },
         dismissButton = {
             TextButton(onClick = onDismiss) {
-                Text("取消")
+                Text("Cancel")
             }
         }
     )
@@ -422,7 +424,7 @@ fun EmptyState(
         Spacer(modifier = Modifier.height(16.dp))
         
         Text(
-            text = "选择一个 UE5 项目开始分析",
+            text = "Select a UE5 project to start analysis",
             style = MaterialTheme.typography.titleMedium
         )
         
@@ -431,7 +433,7 @@ fun EmptyState(
         Button(onClick = onScanClick) {
             Icon(Icons.Default.FolderOpen, contentDescription = null)
             Spacer(modifier = Modifier.width(8.dp))
-            Text("选择项目")
+            Text("Select Project")
         }
     }
 }
@@ -449,7 +451,7 @@ fun LoadingState(
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center
     ) {
-        // 扫描图标
+        // Scan icon
         Icon(
             imageVector = Icons.Default.FolderOpen,
             contentDescription = null,
@@ -460,7 +462,7 @@ fun LoadingState(
         Spacer(modifier = Modifier.height(24.dp))
         
         Text(
-            text = "正在扫描项目...",
+            text = "Scanning project...",
             style = MaterialTheme.typography.titleMedium,
             color = MaterialTheme.colorScheme.onSurface
         )
@@ -468,7 +470,7 @@ fun LoadingState(
         if (progress != null) {
             Spacer(modifier = Modifier.height(24.dp))
             
-            // 线性进度条
+            // Linear progress bar
             if (progress.totalCount > 0) {
                 val progressFloat = (progress.scannedCount.toFloat() / progress.totalCount.toFloat()).coerceIn(0f, 1f)
                 LinearProgressIndicator(
@@ -480,15 +482,15 @@ fun LoadingState(
                 
                 Spacer(modifier = Modifier.height(12.dp))
                 
-                // 进度百分比文字
+                // Progress percentage text
                 val percentage = ((progress.scannedCount.toFloat() / progress.totalCount.toFloat()) * 100).toInt()
                 Text(
-                    text = "正在扫描: ${progress.scannedCount} / ${progress.totalCount} 文件 ($percentage%)",
+                    text = "Scanning: ${progress.scannedCount} / ${progress.totalCount} files ($percentage%)",
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             } else {
-                // 无总数时显示不确定进度条
+                // Show indeterminate progress bar when total is unknown
                 CircularProgressIndicator(
                     modifier = Modifier.size(48.dp),
                     strokeWidth = 4.dp
@@ -497,13 +499,13 @@ fun LoadingState(
                 Spacer(modifier = Modifier.height(12.dp))
                 
                 Text(
-                    text = "已扫描 ${progress.scannedCount} 个资源",
+                    text = "Scanned ${progress.scannedCount} assets",
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
             
-            // 当前文件名（滚动显示）
+            // Current filename (scrolling display)
             if (progress.currentFile.isNotEmpty()) {
                 Spacer(modifier = Modifier.height(16.dp))
                 
@@ -543,7 +545,7 @@ fun LoadingState(
         
         Spacer(modifier = Modifier.height(32.dp))
         
-        // 取消按钮
+        // Cancel button
         OutlinedButton(
             onClick = onCancel,
             colors = ButtonDefaults.outlinedButtonColors(
@@ -552,7 +554,7 @@ fun LoadingState(
         ) {
             Icon(Icons.Default.Close, contentDescription = null)
             Spacer(modifier = Modifier.width(8.dp))
-            Text("取消扫描")
+            Text("Cancel Scan")
         }
     }
 }
@@ -586,13 +588,13 @@ fun ErrorState(
         Spacer(modifier = Modifier.height(24.dp))
         
         Button(onClick = onRetry) {
-            Text("重试")
+            Text("Retry")
         }
     }
 }
 
 /**
- * 资产搜索栏 - 带防抖动画提示
+ * Asset search bar - with debounce animation hint
  */
 @Composable
 fun AssetSearchBar(
@@ -602,7 +604,7 @@ fun AssetSearchBar(
 ) {
     var isSearching by remember { mutableStateOf(false) }
     
-    // 防抖逻辑：300ms 后触发实际搜索
+    // Debounce logic: trigger actual search after 300ms
     LaunchedEffect(query) {
         if (query.isNotEmpty()) {
             isSearching = true
@@ -617,14 +619,14 @@ fun AssetSearchBar(
         value = query,
         onValueChange = onQueryChange,
         modifier = modifier,
-        placeholder = { Text("搜索资源名称或路径...") },
+        placeholder = { Text("Search asset name or path...") },
         leadingIcon = {
             Icon(Icons.Default.Search, contentDescription = null)
         },
         trailingIcon = {
             when {
                 isSearching && query.isNotEmpty() -> {
-                    // 搜索中显示进度指示器
+                    // Show progress indicator during search
                     CircularProgressIndicator(
                         modifier = Modifier.size(24.dp),
                         strokeWidth = 2.dp
@@ -632,7 +634,7 @@ fun AssetSearchBar(
                 }
                 query.isNotEmpty() -> {
                     IconButton(onClick = { onQueryChange("") }) {
-                        Icon(Icons.Default.Clear, contentDescription = "清除")
+                        Icon(Icons.Default.Clear, contentDescription = "Clear")
                     }
                 }
             }
@@ -661,7 +663,7 @@ fun TypeFilter(
                 selected = selectedType == type,
                 onClick = { onTypeSelected(type) },
                 label = { 
-                    Text(type?.displayName ?: "全部") 
+                    Text(type?.displayName ?: "All") 
                 }
             )
         }
@@ -745,7 +747,7 @@ fun AssetList(
             contentAlignment = Alignment.Center
         ) {
             Text(
-                text = "没有找到匹配的资源",
+                text = "No matching assets found",
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
@@ -804,7 +806,7 @@ fun AssetItem(
                 .padding(horizontal = 8.dp, vertical = 8.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            // 选择模式下的 Checkbox
+            // Checkbox in selection mode
             if (isSelectionMode) {
                 Checkbox(
                     checked = isSelected,
@@ -813,16 +815,16 @@ fun AssetItem(
                 )
             }
             
-            // 资源图标
+            // Asset Icon
             Icon(
                 imageVector = getTypeIcon(asset.type),
                 contentDescription = null,
                 tint = if (asset.isOrphan && asset.type == AssetType.LEVEL) {
-                    MaterialTheme.colorScheme.tertiary  // 关卡孤立用橙色
+                    MaterialTheme.colorScheme.tertiary  // Level orphan uses orange
                 } else if (asset.isOrphan) {
-                    MaterialTheme.colorScheme.error      // 普通孤立用红色
+                    MaterialTheme.colorScheme.error      // Normal orphan uses red
                 } else {
-                    MaterialTheme.colorScheme.primary   // 正常用蓝色
+                    MaterialTheme.colorScheme.primary   // Normal uses blue
                 },
                 modifier = Modifier.padding(start = if (isSelectionMode) 0.dp else 8.dp)
             )
@@ -830,20 +832,20 @@ fun AssetItem(
             Spacer(modifier = Modifier.width(16.dp))
             
             Column(modifier = Modifier.weight(1f)) {
-                // 资源名称（带高亮）
+                // Asset name (with highlight)
                 Text(
                     text = highlightText(asset.name, searchQuery),
                     style = MaterialTheme.typography.titleMedium,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis
                 )
-                // 类型
+                // Type
                 Text(
                     text = asset.type.displayName,
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
-                // 路径（带高亮，仅在有搜索时显示）
+                // Path (with highlight, only shown when searching)
                 if (searchQuery.isNotEmpty()) {
                     Text(
                         text = highlightText(asset.path, searchQuery),
@@ -855,12 +857,12 @@ fun AssetItem(
                 }
             }
             
-            // 孤立标记
+            // Orphan Flag
             if (asset.isOrphan) {
                 Spacer(modifier = Modifier.width(8.dp))
                 Icon(
                     imageVector = Icons.Default.Warning,
-                    contentDescription = "孤立资源",
+                    contentDescription = "Orphan Assets",
                     modifier = Modifier.size(18.dp),
                     tint = if (asset.type == AssetType.LEVEL) {
                         MaterialTheme.colorScheme.tertiary
@@ -891,20 +893,20 @@ private fun SelectionBottomBar(
             verticalAlignment = Alignment.CenterVertically
         ) {
             Text(
-                text = "已选 $selectedCount / $totalCount",
+                text = "$selectedCount / $totalCount selected",
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
             
             Row {
                 TextButton(onClick = onClearClick) {
-                    Text("清空")
+                    Text("Clear")
                 }
                 Spacer(modifier = Modifier.width(8.dp))
                 Button(onClick = onExportClick) {
                     Icon(Icons.Default.Download, contentDescription = null)
                     Spacer(modifier = Modifier.width(4.dp))
-                    Text("导出")
+                    Text("Export")
                 }
             }
         }
@@ -912,7 +914,7 @@ private fun SelectionBottomBar(
 }
 
 /**
- * 高亮搜索关键词
+ * Highlight Search Keywords
  */
 @Composable
 private fun highlightText(text: String, query: String): AnnotatedString {
@@ -942,7 +944,7 @@ private fun highlightText(text: String, query: String): AnnotatedString {
 }
 
 /**
- * 获取资源类型对应的图标
+ * Get Icon for Asset Type
  */
 fun getTypeIcon(type: AssetType) = when (type) {
     AssetType.BLUEPRINT -> Icons.Default.Memory
@@ -965,7 +967,7 @@ fun getTypeIcon(type: AssetType) = when (type) {
 }
 
 /**
- * 风险等级筛选器
+ * Risk Level Filter
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -983,7 +985,7 @@ fun OrphanRiskLevelFilter(
             selected = selectedLevel != null,
             onClick = { expanded = true },
             label = { 
-                Text(selectedLevel?.displayName ?: "风险等级") 
+                Text(selectedLevel?.displayName ?: "Risk Level") 
             },
             leadingIcon = {
                 Icon(
@@ -1002,9 +1004,9 @@ fun OrphanRiskLevelFilter(
             expanded = expanded,
             onDismissRequest = { expanded = false }
         ) {
-            // 全部选项
+            // All option
             DropdownMenuItem(
-                text = { Text("全部") },
+                text = { Text("All") },
                 onClick = {
                     onLevelSelected(null)
                     expanded = false
@@ -1016,7 +1018,7 @@ fun OrphanRiskLevelFilter(
             
             Divider()
             
-            // 各个风险等级
+            // Each Risk Level
             OrphanRiskLevel.entries.filter { it != OrphanRiskLevel.NONE }.forEach { level ->
                 DropdownMenuItem(
                     text = { Text(level.displayName) },
@@ -1033,10 +1035,10 @@ fun OrphanRiskLevelFilter(
     }
 }
 
-// 扩展 OrphanRiskLevel 添加 displayName
+// Extend OrphanRiskLevel with displayName
 val OrphanRiskLevel.displayName: String
     get() = when (this) {
-        OrphanRiskLevel.NONE -> "无"
-        OrphanRiskLevel.LOW -> "低风险"
-        OrphanRiskLevel.HIGH -> "高风险"
+        OrphanRiskLevel.NONE -> "None"
+        OrphanRiskLevel.LOW -> "Low Risk"
+        OrphanRiskLevel.HIGH -> "High Risk"
     }

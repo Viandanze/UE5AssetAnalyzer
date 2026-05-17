@@ -22,15 +22,15 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         
-        // 初始化主题偏好管理器
+        // Initialize theme preferences manager
         themePreferencesManager = ThemePreferencesManager(this)
         
         enableEdgeToEdge()
         setContent {
-            // 收集主题偏好
+            // Collect Theme Preferences
             val themeMode by themePreferencesManager.themeModeFlow.collectAsState(initial = ThemeMode.SYSTEM)
             
-            // 计算实际的深色主题状态
+            // Calculate actual dark theme state
             val systemDarkTheme = isSystemInDarkTheme()
             val isDarkTheme = when (themeMode) {
                 ThemeMode.SYSTEM -> systemDarkTheme
@@ -53,7 +53,7 @@ class MainActivity : ComponentActivity() {
     }
     
     /**
-     * 获取当前主题模式
+     * Get current theme mode
      */
     fun getThemeMode(): ThemeMode {
         return ThemeMode.SYSTEM

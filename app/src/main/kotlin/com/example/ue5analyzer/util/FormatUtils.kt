@@ -4,15 +4,15 @@ import java.text.SimpleDateFormat
 import java.util.*
 
 /**
- * 格式化工具类
- * 集中管理项目中重复使用的格式化函数
+ * Formatting Utilities
+ * Centralized formatting functions used throughout the project
  */
 object FormatUtils {
     
     /**
-     * 格式化文件大小
-     * @param bytes 文件大小（字节）
-     * @return 格式化后的大小字符串，如 "1.5 MB"
+     * Format File Size
+     * @param bytes File size in bytes
+     * @return Formatted size string, e.g. "1.5 MB"
      */
     fun formatFileSize(bytes: Long): String {
         return when {
@@ -24,10 +24,10 @@ object FormatUtils {
     }
     
     /**
-     * 格式化时间戳
-     * @param timestamp 时间戳（毫秒）
-     * @param pattern 日期格式模式，默认为 "yyyy-MM-dd HH:mm:ss"
-     * @return 格式化后的时间字符串
+     * Format Timestamp
+     * @param timestamp Timestamp in milliseconds
+     * @param pattern Date format pattern, default is "yyyy-MM-dd HH:mm:ss"
+     * @return Formatted time string
      */
     fun formatTimestamp(timestamp: Long, pattern: String = "yyyy-MM-dd HH:mm:ss"): String {
         val dateFormat = SimpleDateFormat(pattern, Locale.getDefault())
@@ -35,19 +35,19 @@ object FormatUtils {
     }
     
     /**
-     * 格式化相对时间
-     * @param timestamp 时间戳（毫秒）
-     * @return 相对时间字符串，如 "5分钟前"、"2小时前"、"3天前"
+     * Format Relative Time
+     * @param timestamp Timestamp in milliseconds
+     * @return Relative time string, e.g. "5 minutes ago", "2 hours ago", "3 days ago"
      */
     fun formatRelativeTime(timestamp: Long): String {
         val now = System.currentTimeMillis()
         val diff = now - timestamp
         
         return when {
-            diff < 60 * 1000 -> "刚刚"
-            diff < 60 * 60 * 1000 -> "${diff / (60 * 1000)}分钟前"
-            diff < 24 * 60 * 60 * 1000 -> "${diff / (60 * 60 * 1000)}小时前"
-            diff < 7 * 24 * 60 * 60 * 1000 -> "${diff / (24 * 60 * 60 * 1000)}天前"
+            diff < 60 * 1000 -> "Just now"
+            diff < 60 * 60 * 1000 -> "${diff / (60 * 1000)} minutes ago"
+            diff < 24 * 60 * 60 * 1000 -> "${diff / (60 * 60 * 1000)} hours ago"
+            diff < 7 * 24 * 60 * 60 * 1000 -> "${diff / (24 * 60 * 60 * 1000)} days ago"
             else -> formatTimestamp(timestamp, "yyyy-MM-dd")
         }
     }

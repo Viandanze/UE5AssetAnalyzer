@@ -18,38 +18,38 @@ import java.nio.ByteOrder
 import java.util.UUID
 
 /**
- * UE5 项目解析器
- * 核心类：负责扫描项目、解析 uasset 文件
- * TODO: 考虑将序列化逻辑分离到独立的 Serializer 类中，实现关注点分离
- * 当前设计将文件解析和业务逻辑混合在一起，可重构为：
- *   - UassetParser: 负责二进制解析
- *   - DependencyResolver: 负责依赖关系构建
- *   - OrphanDetector: 负责孤立资源检测
+ * UE5 Project Parser
+ * Core class: Responsible for scanning projects and parsing uasset files
+ * TODO: Consider separating serialization logic into a separate Serializer class for better separation of concerns
+ * Current design mixes file parsing and business logic. Can be refactored to:
+ *   - UassetParser: Responsible for binary parsing
+ *   - DependencyResolver: Responsible for building dependency relationships
+ *   - OrphanDetector: Responsible for orphan asset detection
  */
 class UEProjectParser(private val context: Context) {
     
-    // uasset 文件 Magic Number
+    // uasset file Magic Number
     companion object {
         private const val UASSET_MAGIC = 0x9E2A83C1
-        // 最大读取大小：10MB，超过则跳过 Import Table 解析
+        // Maximum read size: 10MB, skip Import Table parsing if exceeded
         private const val MAX_PARSING_SIZE = 10 * 1024 * 1024L
         
-        // 精简的 className 映射表（只保留会出现在 Import Table 中的资源类）
+        // Streamlined className mapping (only keeps resource classes that appear in Import Table)
         private val CLASS_NAME_PREFIX_MAP = mapOf(
-            // 材质相关
+            // Material related
             "MaterialInstanceConstant" to "MI_",
             "Material" to "M_",
             "MaterialFunction" to "MF_",
             "MaterialFunctionInstance" to "MFI_",
             "MaterialParameterCollection" to "MPC_",
             
-            // 网格相关
+            // Mesh related
             "StaticMesh" to "SM_",
             "SkeletalMesh" to "SK_",
             "PhysicsAsset" to "PHYS_",
             "Skeleton" to "SKEL_",
             
-            // 动画相关
+            // Animation related
             "AnimSequence" to "A_",
             "AnimMontage" to "AM_",
             "AnimBlueprint" to "ABP_",
@@ -58,27 +58,27 @@ class UEProjectParser(private val context: Context) {
             "BlendSpace1D" to "BS_",
             "CameraAnim" to "CA_",
             
-            // 贴图相关
+            // Texture related
             "Texture2D" to "T_",
             "TextureCube" to "TC_",
             "RenderTarget" to "RT_",
             "TextureRenderTarget2D" to "RT_",
             "MediaTexture" to "MT_",
             
-            // 音频相关
+            // Audio related
             "SoundCue" to "S_",
             "SoundWave" to "SW_",
             
-            // 蓝图相关
+            // Blueprint related
             "Blueprint" to "BP_",
             "WidgetBlueprint" to "WBP_",
             
-            // 粒子/Niagara
+            // Particles/Niagara
             "ParticleSystem" to "P_",
             "NiagaraSystem" to "NS_",
             "NiagaraEmitter" to "NE_",
             
-            // 曲线/数据
+            // Curve/Data
             "CurveFloat" to "CR_",
             "CurveVector" to "CRV_",
             "CurveLinearColor" to "CRC_",
@@ -91,12 +91,12 @@ class UEProjectParser(private val context: Context) {
             "Widget" to "W_",
             "UserWidget" to "UW_",
             
-            // 序列/电影
+            // Sequence/Movie
             "LevelSequence" to "LS_",
             "Sequence" to "SEQ_",
             "MovieScene" to "MS_",
             
-            // 地形
+            // Terrain
             "Landscape" to "L_",
             "LandscapeMaterial" to "LM_",
             "FoliageType" to "FT_",
@@ -104,11 +104,11 @@ class UEProjectParser(private val context: Context) {
             "FoliageType_Auto" to "FTA_",
             "FoliageType_Object" to "FTO_",
             
-            // 物理材质
+            // Physical material
             "PhysicalMaterial" to "PM_",
             "ChaosPhysicalMaterial" to "CPM_",
             
-            // 游戏逻辑
+            // Game logic
             "GameModeBase" to "GM_",
             "GameStateBase" to "GS_",
             "PlayerController" to "PC_",
@@ -124,33 +124,33 @@ class UEProjectParser(private val context: Context) {
             "DataAsset" to "DA_",
             "PrimaryDataAsset" to "PDA_",
             
-            // 关卡
+            // Level
             "Level" to "LVL_",
             "World" to "LVL_",
             
-            // 灯光
+            // Lighting
             "PointLight" to "PL_",
             "SpotLight" to "SL_",
             "RectLight" to "RL_",
             "DirectionalLight" to "DL_",
             "SkyLight" to "SKL_",
             
-            // 环境
+            // Environment
             "VolumetricCloud" to "VC_",
             "ExponentialHeightFog" to "EHF_",
             "SkyAtmosphere" to "SA_",
             "AtmosphericFog" to "ATMF_",
             "HeightFog" to "HF_",
             
-            // 反射
+            // Reflection
             "BoxReflectionCapture" to "BRC_",
             "SphereReflectionCapture" to "SRC_",
             "PlanarReflection" to "PR_",
             
-            // 地形/导航
+            // Terrain/Navigation
             "NavArea" to "NA_",
             
-            // 缓存/几何
+            // Cache/Geometry
             "GeometryCache" to "GC_",
             "GeometryCollection" to "GC_",
             "FieldSystem" to "FS_",
@@ -164,21 +164,21 @@ class UEProjectParser(private val context: Context) {
             "PaperTerrain" to "PT_",
             "PaperTerrainMaterial" to "PTM_",
             
-            // Wwise音频
+            // Wwise audio
             "AkAudioBank" to "AK_",
             "AkAudioEvent" to "AKE_",
             
-            // 虚拟纹理
+            // Virtual texture
             "RuntimeVirtualTexture" to "RVT_",
             "VirtualTexture2D" to "VT_",
             
-            // 水体
+            // Water
             "WaterBody" to "WB_",
             "WaterBodyRiver" to "WBR_",
             "WaterBodyLake" to "WBL_",
             "WaterBodyOcean" to "WBO_",
             
-            // 植被
+            // Foliage
             "FoliageActor" to "FA_",
             "InstancedFoliageActor" to "IFA_",
             "ProceduralFoliageVolume" to "PFV_",
@@ -186,41 +186,41 @@ class UEProjectParser(private val context: Context) {
             // HLOD
             "HLODActor" to "HLOD_",
             
-            // 环境查询
+            // Environment query
             "EnvironmentQuery" to "EQ_",
             
-            // 行为树
+            // Behavior tree
             "BehaviorTree" to "BT_",
             "BlackboardData" to "BB_",
             
-            // 状态树
+            // State tree
             "StateTree" to "ST_",
             
-            // 摄像机
+            // Camera
             "CameraComponent" to "CAM_",
             "CineCameraComponent" to "CAM_",
             
-            // 体积
+            // Volume
             "AudioVolume" to "AV_",
             
-            // 后期处理
+            // Post processing
             "PostProcessVolume" to "PPV_",
             
-            // 风
+            // Wind
             "WindDirectionalSource" to "WDS_",
             "WindPointSource" to "WPS_",
             
             // Matinee
             "MatineeActor" to "MAT_",
             
-            // 向量场
+            // Vector field
             "VectorField" to "VF_",
             
             // Houdini
             "HoudiniAssetActor" to "H_",
             "HoudiniPDGAssetLink" to "PDG_",
             
-            // 忽略的系统资源（映射到 null 表示跳过）
+            // Ignored system resources (map to null to skip)
             "MapBuildDataRegistry" to null,
             "StreamingMipset" to null,
             "TextureLODSettings" to null,
@@ -252,10 +252,10 @@ class UEProjectParser(private val context: Context) {
     }
     
     /**
-     * 扫描 UE5 项目
-     * @param projectUri 项目 URI
-     * @param onProgress 进度回调：(已扫描数量, 总数, 当前文件名)
-     * @param scanConfig 扫描配置，用于过滤目录和文件
+     * Scan UE5 project
+     * @param projectUri Project URI
+     * @param onProgress Progress callback: (scanned count, total count, current filename)
+     * @param scanConfig Scan config for filtering directories and files
      */
     suspend fun scanProject(
         projectUri: Uri, 
@@ -264,25 +264,25 @@ class UEProjectParser(private val context: Context) {
     ): ScanResult = withContext(Dispatchers.IO) {
         val assets = mutableListOf<UEAsset>()
         
-        // 1. 解析项目名称
+        // 1. Parse project name
         val projectName = getProjectName(projectUri)
         
-        // 2. 先快扫计数（应用配置）
+        // 2. Quick scan count first (apply config)
         val totalFiles = countAssetFiles(projectUri, scanConfig)
         
-        // 3. 扫描 Content 目录，传入协程上下文用于取消检查
+        // 3. Scan Content directory with coroutine context for cancellation check
         val contentUri = findContentDirectory(projectUri)
         if (contentUri != null) {
             scanDirectory(contentUri, assets, onProgress, totalFiles, coroutineContext, scanConfig)
         }
         
-        // 4. 构建依赖关系
+        // 4. Build dependency relationships
         buildDependencies(assets)
         
-        // 5. 检测孤立资源（关卡也参与检测）
+        // 5. Detect orphan assets (levels also participate)
         detectOrphanAssets(assets)
         
-        // 6. 统计
+        // 6. Statistics
         val assetsByType = assets.groupingBy { it.type }.eachCount()
         val orphanAssets = assets.filter { it.isOrphan }
         val totalSize = assets.sumOf { it.size }
@@ -293,14 +293,14 @@ class UEProjectParser(private val context: Context) {
             totalAssets = assets.size,
             totalSize = totalSize,
             assetsByType = assetsByType,
-            allAssets = assets.toList(),  // 所有资源
+            allAssets = assets.toList(),  // All assets
             orphanAssets = orphanAssets
         )
     }
     
     /**
-     * 快速扫描统计资源文件数量
-     * @param scanConfig 扫描配置
+     * Quick scan to count asset files
+     * @param scanConfig Scan config
      */
     private fun countAssetFiles(projectUri: Uri, scanConfig: ScanConfig): Int {
         return try {
@@ -316,8 +316,8 @@ class UEProjectParser(private val context: Context) {
     }
     
     /**
-     * 递归统计目录中的资源文件数量
-     * @param scanConfig 扫描配置
+     * Recursively count asset files in directory
+     * @param scanConfig Scan config
      */
     private fun countFilesInDirectory(directoryUri: Uri, scanConfig: ScanConfig): Int {
         var count = 0
@@ -325,16 +325,16 @@ class UEProjectParser(private val context: Context) {
             val docFile = DocumentFile.fromTreeUri(context, directoryUri) ?: return 0
             docFile.listFiles().forEach { file ->
                 if (file.isDirectory) {
-                    // 跳过忽略的目录
+                    // Skip ignored directories
                     val dirName = file.name ?: ""
                     if (!scanConfig.ignoredDirectories.contains(dirName)) {
                         count += countFilesInDirectory(file.uri, scanConfig)
                     }
                 } else if (file.name?.endsWith(".uasset") == true || file.name?.endsWith(".umap") == true) {
-                    // 检查文件扩展名
+                    // Check file extension
                     val ext = file.name?.substringAfterLast(".") ?: ""
                     if (!scanConfig.ignoredExtensions.contains(ext)) {
-                        // 检查文件大小限制
+                        // Check file size limit
                         if (scanConfig.maxFileSize <= 0 || file.length() <= scanConfig.maxFileSize) {
                             count++
                         }
@@ -342,13 +342,13 @@ class UEProjectParser(private val context: Context) {
                 }
             }
         } catch (e: Exception) {
-            Log.w("UEProjectParser", "统计文件数量异常: ${e.message}")
+            Log.w("UEProjectParser", "Error counting files: ${e.message}")
         }
         return count
     }
     
     /**
-     * 获取项目名称
+     * Get project name
      */
     private fun getProjectName(projectUri: Uri): String {
         return try {
@@ -360,13 +360,13 @@ class UEProjectParser(private val context: Context) {
     }
     
     /**
-     * 查找 Content 目录 - 使用 DocumentFile API
+     * Find Content directory - using DocumentFile API
      */
     private fun findContentDirectory(projectUri: Uri): Uri? {
         return try {
             val docFile = DocumentFile.fromTreeUri(context, projectUri) ?: return null
             
-            // 遍历子目录找 Content
+            // Traverse subdirectories to find Content
             docFile.listFiles().forEach { file ->
                 if (file.isDirectory && file.name == "Content") {
                     return file.uri
@@ -379,10 +379,10 @@ class UEProjectParser(private val context: Context) {
     }
     
     /**
-     * 递归扫描目录 - 使用 DocumentFile API + 进度回调
-     * @param totalFiles 总文件数（用于进度百分比计算）
-     * @param coroutineContext 协程上下文，用于检查取消状态
-     * @param scanConfig 扫描配置
+     * Recursively scan directory - using DocumentFile API + progress callback
+     * @param totalFiles Total file count (for progress percentage calculation)
+     * @param coroutineContext Coroutine context for checking cancellation
+     * @param scanConfig Scan config
      */
     private suspend fun scanDirectory(
         directoryUri: Uri, 
@@ -392,46 +392,46 @@ class UEProjectParser(private val context: Context) {
         coroutineContext: kotlin.coroutines.CoroutineContext,
         scanConfig: ScanConfig = ScanConfig.DEFAULT
     ) {
-        // 检查协程是否已取消
+        // Check if coroutine is cancelled
         coroutineContext.ensureActive()
         
         try {
             val docFile = DocumentFile.fromTreeUri(context, directoryUri) ?: return
             
             docFile.listFiles().forEach { file ->
-                // 在循环中检查取消状态
+                // Check cancellation state in loop
                 coroutineContext.ensureActive()
                 
                 if (file.isDirectory) {
-                    // 跳过忽略的目录
+                    // Skip ignored directories
                     val dirName = file.name ?: ""
                     if (!scanConfig.ignoredDirectories.contains(dirName)) {
-                        // 递归扫描子目录
+                        // Recursively scan subdirectories
                         scanDirectory(file.uri, assets, onProgress, totalFiles, coroutineContext, scanConfig)
                     }
                 } else if (file.name?.endsWith(".uasset") == true) {
-                    // 检查文件扩展名
+                    // Check file extension
                     val ext = file.name?.substringAfterLast(".") ?: ""
                     if (scanConfig.ignoredExtensions.contains(ext)) return@forEach
                     
-                    // 检查文件大小限制
+                    // Check file size limit
                     if (scanConfig.maxFileSize > 0 && file.length() > scanConfig.maxFileSize) return@forEach
                     
-                    // 解析 uasset 文件
+                    // Parse uasset file
                     val asset = parseUasset(file.name!!, file.uri.toString(), file.length(), file.uri)
                     assets.add(asset)
                     
-                    // 进度回调
+                    // Progress callback
                     onProgress(assets.size, totalFiles, file.name!!)
                 } else if (file.name?.endsWith(".umap") == true) {
-                    // 检查文件扩展名
+                    // Check file extension
                     val ext = file.name?.substringAfterLast(".") ?: ""
                     if (scanConfig.ignoredExtensions.contains(ext)) return@forEach
                     
-                    // 检查文件大小限制
+                    // Check file size limit
                     if (scanConfig.maxFileSize > 0 && file.length() > scanConfig.maxFileSize) return@forEach
                     
-                    // .umap 文件是关卡资源
+                    // .umap files are level assets
                     val assetName = file.name!!.removeSuffix(".umap")
                     val asset = UEAsset(
                         id = UUID.randomUUID().toString(),
@@ -446,20 +446,20 @@ class UEProjectParser(private val context: Context) {
                 }
             }
         } catch (e: Exception) {
-            // 记录异常但继续扫描
-            Log.w("UEProjectParser", "扫描目录异常: ${e.message}")
+            // Log exception but continue scanning
+            Log.w("UEProjectParser", "Error scanning directory: ${e.message}")
         }
     }
     
     /**
-     * 解析 uasset 文件（支持二进制解析）
-     * 优先尝试解析 Import Table，失败时回退到文件名推断
+     * Parse uasset file (supports binary parsing)
+     * Prioritize parsing Import Table, fall back to filename inference on failure
      */
     private fun parseUasset(name: String, path: String, size: Long, fileUri: Uri? = null): UEAsset {
         val assetName = name.removeSuffix(".uasset")
         val assetType = AssetType.fromName(assetName)
         
-        // 尝试二进制解析 Import Table
+        // Try binary parsing Import Table
         val dependencies = try {
             val importEntries = if (fileUri != null) {
                 parseImportTableFromFile(fileUri)
@@ -467,13 +467,13 @@ class UEProjectParser(private val context: Context) {
                 parseImportTableFromFile(path)
             }
             if (importEntries.isNotEmpty()) {
-                // 从 Import Table 提取依赖关系
+                // Extract dependencies from Import Table
                 extractDependenciesFromImports(importEntries, assetName)
             } else {
                 inferDependencies(assetName, assetType)
             }
         } catch (e: Exception) {
-            // 解析失败，回退到文件名推断
+            // Parse failed, fall back to filename inference
             inferDependencies(assetName, assetType)
         }
         
@@ -488,7 +488,7 @@ class UEProjectParser(private val context: Context) {
     }
     
     /**
-     * 从文件解析 Import Table（使用直接传入的 Uri）
+     * Parse Import Table from file (using directly passed Uri)
      */
     private fun parseImportTableFromFile(uri: Uri): List<ImportEntry> {
         return try {
@@ -501,49 +501,49 @@ class UEProjectParser(private val context: Context) {
     }
     
     /**
-     * 从文件路径解析 Import Table（兼容旧版本）
-     * SAF 返回的 path 是 document ID，需要正确转换为可访问的 URI
+     * Parse Import Table from file path (legacy compatibility)
+     * SAF returns path as document ID, need to convert to accessible URI
      */
     private fun parseImportTableFromFile(path: String): List<ImportEntry> {
         val contentResolver = context.contentResolver
         
-        // 尝试多种方式构建 URI
+        // Try multiple ways to build URI
         val uris = mutableListOf<Uri?>()
         
-        // 方式1: 如果 path 已经是完整的 document URI
+        // Method 1: If path is already a complete document URI
         if (path.startsWith("content://")) {
             try {
                 uris.add(Uri.parse(path))
             } catch (e: Exception) {
-                Log.w("UEProjectParser", "URI解析异常: $path, ${e.message}")
+                Log.w("UEProjectParser", "URI parse exception: $path, ${e.message}")
             }
         }
         
-        // 方式2: 尝试作为 tree document ID 构建
+        // Method 2: Try as tree document ID
         try {
             val cleanPath = path.removePrefix("/tree/").removePrefix("document/")
             uris.add(Uri.parse("content://com.android.externalstorage.documents/document/$cleanPath"))
         } catch (e: Exception) {
-            Log.w("UEProjectParser", "构建document URI异常: ${e.message}")
+            Log.w("UEProjectParser", "Build document URI exception: ${e.message}")
         }
         
-        // 方式3: 尝试作为 tree URI
+        // Method 3: Try as tree URI
         try {
             if (path.contains("/tree/")) {
                 uris.add(Uri.parse(path))
             }
         } catch (e: Exception) {
-            Log.w("UEProjectParser", "解析tree URI异常: ${e.message}")
+            Log.w("UEProjectParser", "Parse tree URI exception: ${e.message}")
         }
         
-        // 方式4: 尝试直接使用 path（适用于某些情况）
+        // Method 4: Try using path directly (works in some cases)
         try {
             uris.add(Uri.parse(path))
         } catch (e: Exception) {
-            Log.w("UEProjectParser", "直接解析URI异常: ${e.message}")
+            Log.w("UEProjectParser", "Direct URI parse exception: ${e.message}")
         }
         
-        // 尝试打开每个 URI
+        // Try opening each URI
         for (uri in uris) {
             if (uri == null) continue
             
@@ -558,13 +558,13 @@ class UEProjectParser(private val context: Context) {
                     }
                 }
             } catch (e: SecurityException) {
-                // 权限不足，尝试下一个
+                // Permission denied, try next
                 inputStream?.close()
             } catch (e: IOException) {
-                Log.w("UEProjectParser", "IO异常: ${e.message}")
+                Log.w("UEProjectParser", "IO exception: ${e.message}")
                 inputStream?.close()
             } catch (e: Exception) {
-                Log.w("UEProjectParser", "读取文件异常: ${e.message}")
+                Log.w("UEProjectParser", "Error reading file: ${e.message}")
                 inputStream?.close()
             }
         }
@@ -573,7 +573,7 @@ class UEProjectParser(private val context: Context) {
     }
     
     /**
-     * 计数输入流 - 限制读取字节数，超过上限返回 -1
+     * Counting input stream - limit read bytes, return -1 if exceeds limit
      */
     private class CountingInputStream(inputStream: InputStream, private val maxBytes: Long) : FilterInputStream(inputStream) {
         private var bytesRead = 0L
@@ -596,59 +596,59 @@ class UEProjectParser(private val context: Context) {
     }
     
     /**
-     * 解析二进制 uasset 文件（真正的流式解析，防止OOM）
-     * 只读取前10MB数据进行解析，超出部分跳过
+     * Parse binary uasset file (true streaming parsing, prevent OOM)
+     * Only read first 10MB for parsing, skip rest
      */
     private fun parseBinaryUasset(inputStream: InputStream): List<ImportEntry> {
         return try {
-            // 使用计数输入流限制读取大小
+            // Use counting input stream to limit read size
             val countingInput = CountingInputStream(inputStream, MAX_PARSING_SIZE)
             val dis = DataInputStream(countingInput)
             
-            // 1. 读取并验证 Magic Number (4字节)
+            // 1. Read and verify Magic Number (4 bytes)
             val magic = dis.readInt()
             if (magic.toLong() != UASSET_MAGIC) {
                 return emptyList()
             }
             
-            // 2. 读取版本信息（5个int32）
+            // 2. Read version info (5 int32s)
             dis.readInt()  // LegacyVersion
             dis.readInt()  // LegacyUE3Version  
             dis.readInt()  // FileVersionUE4
             val fileVersionUE5 = dis.readInt()  // FileVersionUE5
             dis.readInt()  // FileVersionLicenseeUE4
             
-            // 3. 跳过 NameTableFlags (4 bytes)
+            // 3. Skip NameTableFlags (4 bytes)
             dis.readInt()
             
-            // 4. 跳过 4 个 padding (16 bytes)
+            // 4. Skip 4 paddings (16 bytes)
             repeat(4) { dis.readInt() }
             
-            // 5. 读取 FolderName (51 bytes) - 固定长度字符串
+            // 5. Read FolderName (51 bytes) - fixed length string
             val folderNameBytes = ByteArray(51)
             dis.readFully(folderNameBytes)
             
-            // 6. 尝试从 UE5 标准偏移读取 HeadersSize
-            // 在 UE5 中，HeadersSize 通常在偏移 0x5C (92) 左右
+            // 6. Try reading HeadersSize from UE5 standard offset
+            // In UE5, HeadersSize is usually around offset 0x5C (92)
             try {
-                // 先尝试 HeadersSize 方案
+                // Try HeadersSize method first
                 val headersSize = readIntFromStream(dis)
                 
                 if (headersSize > 0 && headersSize < MAX_PARSING_SIZE.toInt()) {
-                    // 使用 HeadersSize 定位 Name Table 和 Import Table
+                    // Use HeadersSize to locate Name Table and Import Table
                     val result = tryParseWithHeadersSize(dis, headersSize)
                     if (result.isNotEmpty()) return result
                 }
             } catch (e: Exception) {
-                // HeadersSize 方式失败，尝试备用方案
+                // HeadersSize method failed, try backup plan
             }
             
-            // 7. 备用方案：盲搜 Name Table 和 Import Table 位置
-            // 将当前流位置重置读取剩余数据（最多10MB）
+            // 7. Backup plan: Blind search for Name Table and Import Table positions
+            // Reset current stream position to read remaining data (max 10MB)
             return searchAndParseImportTable(dis)
             
         } catch (e: OutOfMemoryError) {
-            // OOM时优雅降级，返回空列表
+            // Graceful degradation on OOM, return empty list
             emptyList()
         } catch (e: Exception) {
             emptyList()
@@ -656,7 +656,7 @@ class UEProjectParser(private val context: Context) {
     }
     
     /**
-     * 从流中读取一个 int32（不移动流位置）
+     * Read an int32 from stream (without moving stream position)
      */
     private fun readIntFromStream(dis: DataInputStream): Int {
         val bytes = ByteArray(4)
@@ -665,12 +665,12 @@ class UEProjectParser(private val context: Context) {
     }
     
     /**
-     * 使用 HeadersSize 定位并解析 Name/Import Table
+     * Use HeadersSize to locate and parse Name/Import Table
      */
     private fun tryParseWithHeadersSize(dis: DataInputStream, headersSize: Int): List<ImportEntry> {
         try {
-            // 在 UE5 文件中，Name Table 和 Import Table 的 count/offset 通常在 HeadersSize 附近
-            // 跳过到 HeadersSize 位置
+            // In UE5 files, Name Table and Import Table count/offset are usually near HeadersSize
+            // Skip to HeadersSize position
             val currentPos = 4 + 5 * 4 + 4 + 16 + 51 + 4  // Magic + 5versions + NameTableFlags + 4padding + FolderName + int32
             val skipBytes = headersSize - currentPos
             if (skipBytes > 0) {
@@ -679,35 +679,35 @@ class UEProjectParser(private val context: Context) {
                 return emptyList()
             }
             
-            // 读取 Name Table count 和 offset
+            // Read Name Table count and offset
             val nameCount = dis.readInt()
             val nameOffset = dis.readInt()
             
-            // 验证 nameCount
+            // Validate nameCount
             if (nameCount <= 0 || nameCount >= 100000) {
                 return emptyList()
             }
             
-            // 读取 Import Table count 和 offset
+            // Read Import Table count and offset
             val importCount = dis.readInt()
             val importOffset = dis.readInt()
             
-            // 验证 importCount
+            // Validate importCount
             if (importCount < 0 || importCount >= 50000) {
                 return emptyList()
             }
             
-            // 验证 offset
+            // Validate offset
             if (nameOffset <= 0 || nameOffset >= MAX_PARSING_SIZE.toInt() || 
                 importOffset <= 0 || importOffset >= MAX_PARSING_SIZE.toInt()) {
                 return emptyList()
             }
             
-            // 跳转到 Name Table 位置
+            // Jump to Name Table position
             val nameTableStart = headersSize + nameOffset
             dis.skipBytes((nameTableStart - dis.available()).toInt().coerceAtLeast(0))
             
-            // 解析 Name Table
+            // Parse Name Table
             val nameTable = mutableListOf<String>()
             for (i in 0 until nameCount) {
                 try {
@@ -718,7 +718,7 @@ class UEProjectParser(private val context: Context) {
                     dis.readFully(stringBytes)
                     val name = String(stringBytes, Charsets.UTF_8)
                     
-                    // 跳过零终止符(1字节) + NonPIUFlags(2字节) = 3字节
+                    // Skip null terminator(1 byte) + NonPIUFlags(2 bytes) = 3 bytes
                     dis.skipBytes(3)
                     
                     nameTable.add(name)
@@ -727,11 +727,11 @@ class UEProjectParser(private val context: Context) {
                 }
             }
             
-            // 跳转到 Import Table 位置
+            // Jump to Import Table position
             val importTableStart = headersSize + importOffset
             dis.skipBytes((importTableStart - dis.available()).toInt().coerceAtLeast(0))
             
-            // 解析 Import Table
+            // Parse Import Table
             val importEntries = mutableListOf<ImportEntry>()
             for (i in 0 until importCount) {
                 try {
@@ -742,7 +742,7 @@ class UEProjectParser(private val context: Context) {
                     val extra1 = dis.readInt()
                     val extra2 = dis.readInt()
                     
-                    // UE5 Name Table 索引通常从 1 开始（0 有特殊含义），所以实际访问需要减 1
+                    // UE5 Name Table indices usually start from 1 (0 has special meaning), so subtract 1 for actual access
                     val className = if (classNameIndex > 0 && classNameIndex - 1 < nameTable.size) {
                         nameTable[classNameIndex - 1]
                     } else ""
@@ -767,12 +767,12 @@ class UEProjectParser(private val context: Context) {
     }
     
     /**
-     * 搜索并解析 Import Table（流式备用方案）
-     * 由于流已经被部分读取，这里需要将剩余数据读入小buffer进行搜索
-     * 限制读取量到前 1MB，因为 Name Table 和 Import Table 的头部信息通常在前几KB范围内
+     * Search and parse Import Table (streaming backup plan)
+     * Since stream has been partially read, read remaining data into small buffer for searching
+     * Limit read to first 1MB, because Name Table and Import Table header info is usually within first few KB
      */
     private fun searchAndParseImportTable(dis: DataInputStream): List<ImportEntry> {
-        // 只读取前 1MB 用于搜索（头部信息通常在前几KB）
+        // Only read first 1MB for searching (header info usually in first few KB)
         val searchSize = minOf(dis.available(), 1024 * 1024)
         if (searchSize < 64) return emptyList()
         
@@ -784,9 +784,9 @@ class UEProjectParser(private val context: Context) {
         }
         
         val searchRanges = listOf(
-            0x5C to 0x100,  // 常见 HeadersSize 范围
-            0x70 to 0x120,   // 备用范围
-            0x60 to 0x140    // 更宽的范围
+            0x5C to 0x100,  // Common HeadersSize ranges
+            0x70 to 0x120,   // Backup ranges
+            0x60 to 0x140    // Wider range
         )
         
         for ((start, end) in searchRanges) {
@@ -795,39 +795,39 @@ class UEProjectParser(private val context: Context) {
             try {
                 val testBuffer = ByteBuffer.wrap(bytes, start, end - start).order(ByteOrder.BIG_ENDIAN)
                 
-                // 尝试读取 name count 和 offset
+                // Try to read name count and offset
                 val nameCount = testBuffer.int
                 val nameOffset = testBuffer.int
                 
-                // 验证 nameCount
+                // Validate nameCount
                 if (nameCount > 0 && nameCount < 100000) {
-                    // 尝试读取 import count 和 offset
+                    // Try to read import count and offset
                     val importCount = testBuffer.int
                     val importOffset = testBuffer.int
                     
-                    // 验证 importCount 和 offset
+                    // Validate importCount and offset
                     if (importCount >= 0 && importCount < 50000 && 
                         nameOffset > 0 && nameOffset < bytes.size &&
                         importOffset > 0 && importOffset < bytes.size) {
                         
-                        // 找到有效的头部，解析 Name Table
+                        // Found valid header, parse Name Table
                         val nameTable = parseNameTable(bytes, nameOffset.toLong(), nameCount)
                         
-                        // 解析 Import Table
+                        // Parse Import Table
                         return parseImportTable(bytes, importOffset.toLong(), importCount, nameTable)
                     }
                 }
             } catch (e: Exception) {
-                // 继续尝试下一个范围
+                // Continue trying next range
             }
         }
         
-        // 最后尝试：在文件开头范围内搜索
+        // Final attempt: Search within file header range
         return tryParseFromHeader(bytes, 0x80)
     }
     
     /**
-     * 尝试从给定偏移量解析头部
+     * Try to parse header from given offset
      */
     private fun tryParseFromHeader(bytes: ByteArray, baseOffset: Int): List<ImportEntry> {
         if (baseOffset + 32 > bytes.size) return emptyList()
@@ -835,8 +835,8 @@ class UEProjectParser(private val context: Context) {
         val buffer = ByteBuffer.wrap(bytes, baseOffset, bytes.size - baseOffset).order(ByteOrder.BIG_ENDIAN)
         
         try {
-            // 跳过一些可能存在的字段
-            // 尝试找到 name table
+            // Skip some potentially existing fields
+            // Try to find name table
             val nameCount = buffer.int
             val nameOffset = buffer.int
             
@@ -854,18 +854,18 @@ class UEProjectParser(private val context: Context) {
                 }
             }
         } catch (e: Exception) {
-            // 解析失败
+            // Parse Failed
         }
         
         return emptyList()
     }
     
     /**
-     * 解析 Name Table
-     * Name Table 条目格式：int32(长度) + UTF-8字符串 + 零终止符 + uint16(非序列化标志)
+     * Parse Name Table
+     * Name Table entry format: int32(length) + UTF-8 string + null terminator + uint16(non-serialized flags)
      */
     private fun parseNameTable(bytes: ByteArray, offset: Long, count: Int): List<String> {
-        // 边界检查：防止整数溢出和越界访问
+        // Boundary check: Prevent integer overflow and out-of-bounds access
         if (offset < 0 || offset > Int.MAX_VALUE || offset > bytes.size) {
             return emptyList()
         }
@@ -876,17 +876,17 @@ class UEProjectParser(private val context: Context) {
         try {
             buffer.position(offset.toInt())
         } catch (e: Exception) {
-            Log.w("UEProjectParser", "NameTable position 异常: offset=$offset, ${e.message}")
+            Log.w("UEProjectParser", "NameTable position exception: offset=$offset, ${e.message}")
             return result
         }
         
         for (i in 0 until count) {
             try {
-                if (buffer.remaining() < 6) break  // 至少需要 4(长度) + 2(flags)
+                if (buffer.remaining() < 6) break  // Need at least 4(length) + 2(flags)
                 
                 val stringLength = buffer.int
                 if (stringLength <= 0 || stringLength > 512) {
-                    // 无效长度，可能是解析位置错误
+                    // Invalid length, possibly parsing position error
                     break
                 }
                 
@@ -896,12 +896,12 @@ class UEProjectParser(private val context: Context) {
                 buffer.get(stringBytes)
                 val name = String(stringBytes, Charsets.UTF_8)
                 
-                // 跳过零终止符(1字节) + NonPIUFlags(2字节) = 3字节
+                // Skip null terminator(1 byte) + NonPIUFlags(2 bytes) = 3 bytes
                 buffer.position(buffer.position() + 3)
                 
                 result.add(name)
             } catch (e: Exception) {
-                // 解析条目失败，尝试继续下一个
+                // Failed to parse entry, try to continue with next
                 break
             }
         }
@@ -910,9 +910,9 @@ class UEProjectParser(private val context: Context) {
     }
     
     /**
-     * 解析 Import Table
-     * Import Table 条目格式：6个int32字段
-     * ClassPackage, ClassName, OuterIndex, ObjectName + 2个额外字段
+     * Parse Import Table
+     * Import Table entry format: 6 int32 fields
+     * ClassPackage, ClassName, OuterIndex, ObjectName + 2 extra fields
      */
     private fun parseImportTable(
         bytes: ByteArray, 
@@ -920,7 +920,7 @@ class UEProjectParser(private val context: Context) {
         count: Int, 
         nameTable: List<String>
     ): List<ImportEntry> {
-        // 边界检查：防止整数溢出和越界访问
+        // Boundary check: Prevent integer overflow and out-of-bounds access
         if (offset < 0 || offset > Int.MAX_VALUE || offset > bytes.size) {
             return emptyList()
         }
@@ -931,7 +931,7 @@ class UEProjectParser(private val context: Context) {
         try {
             buffer.position(offset.toInt())
         } catch (e: Exception) {
-            Log.w("UEProjectParser", "ImportTable position 异常: offset=$offset, ${e.message}")
+            Log.w("UEProjectParser", "ImportTable position exception: offset=$offset, ${e.message}")
             return result
         }
         
@@ -946,7 +946,7 @@ class UEProjectParser(private val context: Context) {
                 val extra1 = buffer.int
                 val extra2 = buffer.int
                 
-                // UE5 Name Table 索引通常从 1 开始（0 有特殊含义），所以实际访问需要减 1
+                // UE5 Name Table indices usually start from 1 (0 has special meaning), so subtract 1 for actual access
                 val className = if (classNameIndex > 0 && classNameIndex - 1 < nameTable.size) {
                     nameTable[classNameIndex - 1]
                 } else ""
@@ -959,7 +959,7 @@ class UEProjectParser(private val context: Context) {
                     result.add(ImportEntry(className, objectName))
                 }
             } catch (e: Exception) {
-                // 解析条目失败
+                // Failed to parse entry
                 break
             }
         }
@@ -968,8 +968,8 @@ class UEProjectParser(private val context: Context) {
     }
     
     /**
-     * 从 Import Table 提取依赖关系
-     * 使用扩展的映射表匹配资源名称
+     * Extract dependencies from Import Table
+     * Use extended mapping table to match asset names
      */
     private fun extractDependenciesFromImports(
         importEntries: List<ImportEntry>, 
@@ -978,7 +978,7 @@ class UEProjectParser(private val context: Context) {
         val dependencies = mutableSetOf<String>()
         
         for (entry in importEntries) {
-            // 跳过系统内置资源和当前资源自身
+            // Skip system built-in assets and current asset itself
             if (entry.className.contains("/Script/") || 
                 entry.className == "MapBuildDataRegistry" ||
                 entry.className == "StreamingMipset" ||
@@ -990,22 +990,22 @@ class UEProjectParser(private val context: Context) {
                 continue
             }
             
-            // 先尝试从映射表获取前缀
+            // First try to get prefix from mapping table
             val prefix = CLASS_NAME_PREFIX_MAP[entry.className] ?: CLASS_NAME_PREFIX_MAP.entries.find { 
                 entry.className.startsWith(it.key) 
             }?.value
             
             if (prefix != null) {
-                // 有映射前缀，直接使用
+                // Has mapping prefix, use directly
                 if (prefix.isNotEmpty()) {
                     dependencies.add(prefix + entry.objectName)
                 }
             } else if (entry.objectName.isNotEmpty()) {
-                // 映射表没有，尝试直接使用 objectName
-                // 检查是否看起来像资源名称（通常有前缀）
+                // Not in mapping table, try to use objectName directly
+                // Check if it looks like an asset name (usually has prefix)
                 val likelyAsset = entry.objectName
                 
-                // 如果没有明确前缀但名字较长，尝试匹配
+                // If no clear prefix but long name, try matching
                 if (likelyAsset.length > 3 && !likelyAsset.contains(" ")) {
                     dependencies.add(likelyAsset)
                 }
@@ -1016,10 +1016,10 @@ class UEProjectParser(private val context: Context) {
     }
     
     /**
-     * 根据文件名和类型推断依赖
+     * Infer dependencies from filename and type
      */
     private fun inferDependencies(assetName: String, assetType: AssetType): List<String> {
-        // 根据类型添加常见的依赖
+        // Add common dependencies based on type
         return when (assetType) {
             AssetType.MATERIAL_INSTANCE -> listOf(
                 "M_${assetName.removePrefix("MI_")}",
@@ -1034,29 +1034,29 @@ class UEProjectParser(private val context: Context) {
     }
     
     /**
-     * 构建依赖关系（反向引用）
-     * references 的语义是"谁引用了我"
-     * 如果 A 依赖 B（A.dependencies 包含 B 的 ID），那么 B 的 references 应该包含 A 的 ID
+     * Build dependency relationships (reverse references)
+     * The semantics of references is "who references me"
+     * If A depends on B (A.dependencies contains B's ID), then B's references should contain A's ID
      */
     private fun buildDependencies(assets: MutableList<UEAsset>) {
         val assetMap = assets.associateBy { it.name }
         
-        // 构建反向引用关系：被引用者的 ID -> 引用者的 ID 列表
+        // Build reverse reference map: referenced asset ID -> list of referencing asset IDs
         val referencesMap = mutableMapOf<String, MutableList<String>>()
         
         assets.forEach { asset ->
             asset.dependencies.forEach { depName ->
-                // 模糊匹配：先精确，再忽略大小写，再后缀匹配
+                // Fuzzy match: exact first, then case-insensitive, then suffix match
                 val matchedAsset = findMatchingAsset(depName, assetMap)
                 if (matchedAsset != null) {
-                    // 被依赖的资源（matchedAsset）的 references 应该加上当前资产（asset）的 ID
+                    // The referenced asset (matchedAsset) should add the current asset's ID to its references
                     referencesMap.getOrPut(matchedAsset.id) { mutableListOf() }
                         .add(asset.id)
                 }
             }
         }
         
-        // 更新所有资源的 references
+        // Update all assets' references
         assets.forEachIndexed { index, asset ->
             val refs = referencesMap[asset.id] ?: emptyList()
             assets[index] = asset.copy(references = refs)
@@ -1064,22 +1064,22 @@ class UEProjectParser(private val context: Context) {
     }
     
     /**
-     * 模糊匹配资产名称
-     * 依赖名和资源名可能不完全一致，需要多种匹配策略
+     * Fuzzy match asset names
+     * Dependency names and asset names may not exactly match, requiring multiple matching strategies
      */
     private fun findMatchingAsset(depName: String, assetMap: Map<String, UEAsset>): UEAsset? {
-        // 1. 精确匹配
+        // 1. Exact match
         assetMap[depName]?.let { return it }
         
-        // 2. 忽略大小写匹配
+        // 2. Case-insensitive match
         assetMap.values.find { it.name.equals(depName, ignoreCase = true) }?.let { return it }
         
-        // 3. 后缀匹配：depName 可能是路径形式如 "/Game/Materials/M_Wood"
+        // 3. Suffix match: depName may be in path form like "/Game/Materials/M_Wood"
         val shortName = depName.substringAfterLast("/")
         assetMap[shortName]?.let { return it }
         assetMap.values.find { it.name.equals(shortName, ignoreCase = true) }?.let { return it }
         
-        // 4. 去掉 "/Game/" 前缀后匹配
+        // 4. Match after removing "/Game/" prefix
         val gamePath = depName.removePrefix("/Game/")
         val gameName = gamePath.substringAfterLast("/")
         if (gameName != shortName) {
@@ -1091,22 +1091,22 @@ class UEProjectParser(private val context: Context) {
     }
     
     /**
-     * 检测孤立资源
-     * 所有资源都参与孤立检测，关卡孤立时给 LOW 风险而非 HIGH
+     * Detect orphan assets
+     * All assets participate in orphan detection, levels get LOW risk instead of HIGH
      */
     private fun detectOrphanAssets(assets: MutableList<UEAsset>) {
         val referencedIds = assets.flatMap { it.references }.toSet()
         
         assets.forEachIndexed { index, asset ->
-            // 所有资源都参与孤立检测，关卡也不例外
+            // All assets participate in orphan detection, including levels
             val isOrphan = asset.id !in referencedIds
             
-            // 计算孤立风险等级
+            // Calculate orphan risk level
             val orphanRiskLevel = when {
-                isOrphan && asset.type != AssetType.LEVEL -> OrphanRiskLevel.HIGH  // 非关卡孤立=高风险
-                isOrphan && asset.type == AssetType.LEVEL -> OrphanRiskLevel.LOW   // 关卡孤立=低风险
-                asset.references.size == 1 -> OrphanRiskLevel.LOW                  // 仅1个引用=低风险
-                else -> OrphanRiskLevel.NONE                                        // 引用>=2=无风险
+                isOrphan && asset.type != AssetType.LEVEL -> OrphanRiskLevel.HIGH  // Non-level orphan = High risk
+                isOrphan && asset.type == AssetType.LEVEL -> OrphanRiskLevel.LOW   // Level orphan = Low risk
+                asset.references.size == 1 -> OrphanRiskLevel.LOW                  // Only 1 reference = Low risk
+                else -> OrphanRiskLevel.NONE                                        // References >= 2 = No risk
             }
             
             assets[index] = asset.copy(isOrphan = isOrphan, orphanRiskLevel = orphanRiskLevel)
@@ -1115,7 +1115,7 @@ class UEProjectParser(private val context: Context) {
 }
 
 /**
- * Import Table 条目
+ * Import Table Entry
  */
 data class ImportEntry(
     val className: String,

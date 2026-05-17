@@ -23,29 +23,29 @@ import androidx.compose.ui.unit.dp
 import com.example.ue5analyzer.util.FormatUtils
 
 /**
- * 扩展的饼图颜色列表（15种）
+ * Extended Pie Chart Color Palette (15 colors)
  */
 private val chartColors = listOf(
-    Color(0xFF4FC3F7),  // 蓝色
-    Color(0xFF81C784),  // 绿色
-    Color(0xFFFFB74D),  // 橙色
-    Color(0xFFE57373),  // 红色
-    Color(0xFFBA68C8),  // 紫色
-    Color(0xFF4DD0E1),  // 青色
-    Color(0xFFFFD54F),  // 黄色
-    Color(0xFFA1887F),  // 棕色
-    Color(0xFF90A4AE),  // 灰色
-    Color(0xFFF06292),  // 粉色
-    Color(0xFF7986CB),  // 靛蓝
-    Color(0xFF4DB6AC),  // 青色2
-    Color(0xFFFFD180),  // 浅橙色
-    Color(0xFFAED581),  // 浅绿色
-    Color(0xFFB39DDB)   // 浅紫色
+    Color(0xFF4FC3F7),  // Blue
+    Color(0xFF81C784),  // Green
+    Color(0xFFFFB74D),  // Orange
+    Color(0xFFE57373),  // Red
+    Color(0xFFBA68C8),  // Purple
+    Color(0xFF4DD0E1),  // Cyan
+    Color(0xFFFFD54F),  // Yellow
+    Color(0xFFA1887F),  // Brown
+    Color(0xFF90A4AE),  // Gray
+    Color(0xFFF06292),  // Pink
+    Color(0xFF7986CB),  // Indigo
+    Color(0xFF4DB6AC),  // Cyan2
+    Color(0xFFFFD180),  // Light orange
+    Color(0xFFAED581),  // Light green
+    Color(0xFFB39DDB)   // Light purple
 )
 
 /**
- * 环形进度条 - 用于健康度评分显示
- * 优化：直接使用 animateFloatAsState，无需 LaunchedEffect
+ * Circular Progress Bar - For Health Score Display
+ * Optimization: Use animateFloatAsState directly, no need for LaunchedEffect
  */
 @Composable
 fun CircularProgressBar(
@@ -56,7 +56,7 @@ fun CircularProgressBar(
     color: Color = MaterialTheme.colorScheme.primary,
     backgroundColor: Color = MaterialTheme.colorScheme.surfaceVariant
 ) {
-    // 直接使用 animateFloatAsState，targetValue 变化时自动触发动画
+    // Use animateFloatAsState directly, animation triggers automatically when targetValue changes
     val currentPercentage by animateFloatAsState(
         targetValue = percentage,
         animationSpec = tween(durationMillis = animationDuration),
@@ -79,7 +79,7 @@ fun CircularProgressBar(
                 (size.height - diameter) / 2
             )
 
-            // 背景圆
+            // Background circle
             drawArc(
                 color = backgroundColor,
                 startAngle = -90f,
@@ -90,7 +90,7 @@ fun CircularProgressBar(
                 style = stroke
             )
 
-            // 进度圆
+            // Progress circle
             drawArc(
                 color = color,
                 startAngle = -90f,
@@ -111,13 +111,13 @@ fun CircularProgressBar(
 }
 
 /**
- * 饼图 - 资源类型分布（改进版）
- * 占比小于5%的类型合并为"其他"
- * 优化：使用常量替代魔法数字，直接使用 animateFloatAsState
+ * Pie Chart - Asset Type Distribution (Improved Version)
+ * Types with less than 5% share are merged into "Other"
+ * Optimization: Use constants instead of magic numbers, use animateFloatAsState directly
  */
-private const val CHART_THRESHOLD_PERCENT = 0.05f  // 5%阈值
-private const val PIE_CHART_SIZE = 150            // 饼图大小(dp)
-private const val LEGEND_MAX_ITEMS = 6            // 图例最大显示项数
+private const val CHART_THRESHOLD_PERCENT = 0.05f  // 5% threshold
+private const val PIE_CHART_SIZE = 150            // Pie chart size (dp)
+private const val LEGEND_MAX_ITEMS = 6            // Maximum legend items
 
 @Composable
 fun PieChart(
@@ -129,7 +129,7 @@ fun PieChart(
 
     val total = data.sumOf { it.second }.toFloat()
     
-    // 预处理数据：将占比小于5%的类型合并为"其他"
+    // Preprocess data: merge types with less than 5% into "Other"
     val processedData = remember(data) {
         val sorted = data.sortedByDescending { it.second }
         val mainItems = mutableListOf<Pair<String, Int>>()
@@ -146,13 +146,13 @@ fun PieChart(
         
         if (otherItems.isNotEmpty()) {
             val otherSum = otherItems.sumOf { it.second }
-            mainItems.add("其他(${otherItems.size}种)" to otherSum)
+            mainItems.add("Other (${otherItems.size} types)" to otherSum)
         }
         
         mainItems
     }
 
-    // 直接使用 animateFloatAsState，简化动画状态管理
+    // Use animateFloatAsState directly, simplify animation state management
     val animationProgress by animateFloatAsState(
         targetValue = 1f,
         animationSpec = tween(durationMillis = animationDuration),
@@ -164,7 +164,7 @@ fun PieChart(
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically
     ) {
-        // 饼图
+        // Pie chart
         Canvas(
             modifier = Modifier
                 .size(PIE_CHART_SIZE.dp)
@@ -184,7 +184,7 @@ fun PieChart(
             }
         }
 
-        // 图例
+        // Legend
         Column(
             modifier = Modifier
                 .weight(1f)
@@ -210,7 +210,7 @@ fun PieChart(
             }
             if (processedData.size > LEGEND_MAX_ITEMS) {
                 Text(
-                    text = "...共 ${processedData.size} 种类型",
+                    text = "... ${processedData.size} types in total",
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
@@ -220,7 +220,7 @@ fun PieChart(
 }
 
 /**
- * 柱状图 - 资源大小TOP10
+ * Bar Chart - Top 10 Assets by Size
  */
 @Composable
 fun BarChart(
@@ -232,7 +232,7 @@ fun BarChart(
 ) {
     if (data.isEmpty()) return
 
-    // 直接使用 animateFloatAsState，简化动画状态管理
+    // Use animateFloatAsState directly, simplify animation state management
     val animationProgress by animateFloatAsState(
         targetValue = 1f,
         animationSpec = tween(durationMillis = animationDuration),
@@ -264,13 +264,13 @@ fun BarChart(
                         .height(20.dp)
                 ) {
                     Canvas(modifier = Modifier.fillMaxSize()) {
-                        // 背景
+                        // Background
                         drawRoundRect(
                             color = Color.Gray.copy(alpha = 0.2f),
                             size = size,
                             cornerRadius = androidx.compose.ui.geometry.CornerRadius(4.dp.toPx())
                         )
-                        // 进度
+                        // Progress
                         drawRoundRect(
                             color = barColor.copy(alpha = 0.7f + (index * 0.03f).coerceAtMost(0.3f)),
                             size = Size(size.width * progress, size.height),
@@ -291,7 +291,7 @@ fun BarChart(
 }
 
 /**
- * 统计卡片
+ * Statistics Card
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable

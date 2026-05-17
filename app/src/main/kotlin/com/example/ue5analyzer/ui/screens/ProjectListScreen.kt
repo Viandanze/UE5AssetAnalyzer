@@ -17,7 +17,7 @@ import com.example.ue5analyzer.ui.viewmodel.ProjectInfo
 import com.example.ue5analyzer.util.FormatUtils
 
 /**
- * 历史项目列表页面
+ * History Projects list screen
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -33,12 +33,12 @@ fun ProjectListScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("历史项目") },
+                title = { Text("History Projects") },
                 navigationIcon = {
                     IconButton(onClick = onBackClick) {
                         Icon(
                             imageVector = Icons.Default.ArrowBack,
-                            contentDescription = "返回"
+                            contentDescription = "Back"
                         )
                     }
                 }
@@ -74,13 +74,13 @@ fun ProjectListScreen(
         }
     }
     
-    // 删除确认对话框
+    // Delete confirmation dialog
     projectToDelete?.let { project ->
         AlertDialog(
             onDismissRequest = { projectToDelete = null },
-            title = { Text("删除项目") },
+            title = { Text("Delete Project") },
             text = {
-                Text("确定要删除项目 \"${project.name}\" 吗？\n这将同时删除该项目的所有扫描数据。")
+                Text("Are you sure you want to delete project \"${project.name}\"?\nThis will also delete all scan data for this project.")
             },
             confirmButton = {
                 TextButton(
@@ -92,12 +92,12 @@ fun ProjectListScreen(
                         contentColor = MaterialTheme.colorScheme.error
                     )
                 ) {
-                    Text("删除")
+                    Text("Delete")
                 }
             },
             dismissButton = {
                 TextButton(onClick = { projectToDelete = null }) {
-                    Text("取消")
+                    Text("Cancel")
                 }
             }
         )
@@ -123,7 +123,7 @@ private fun EmptyProjectsState(
         Spacer(modifier = Modifier.height(16.dp))
         
         Text(
-            text = "暂无历史项目",
+            text = "No history projects",
             style = MaterialTheme.typography.titleMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant
         )
@@ -131,7 +131,7 @@ private fun EmptyProjectsState(
         Spacer(modifier = Modifier.height(8.dp))
         
         Text(
-            text = "扫描的项目将显示在这里",
+            text = "Scanned projects will appear here",
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
         )
@@ -179,7 +179,7 @@ private fun ProjectItem(
                 Row(
                     horizontalArrangement = Arrangement.spacedBy(16.dp)
                 ) {
-                    // 资源数量
+                    // Asset count
                     Row(
                         verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.spacedBy(4.dp)
@@ -191,13 +191,13 @@ private fun ProjectItem(
                             tint = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                         Text(
-                            text = "${project.totalAssets} 个资源",
+                            text = "${project.totalAssets} assets",
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
                     
-                    // 项目大小
+                    // Project size
                     Row(
                         verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.spacedBy(4.dp)
@@ -218,24 +218,24 @@ private fun ProjectItem(
                 
                 Spacer(modifier = Modifier.height(2.dp))
                 
-                // 扫描时间
+                // Scan time
                 Text(
-                    text = "最后扫描: ${FormatUtils.formatTimestamp(project.lastScanned, "yyyy-MM-dd HH:mm")}",
+                    text = "Last scan: ${FormatUtils.formatTimestamp(project.lastScanned, "yyyy-MM-dd HH:mm")}",
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
                 )
             }
             
-            // 删除按钮
+            // Delete button
             IconButton(onClick = onDeleteClick) {
                 Icon(
                     imageVector = Icons.Default.Delete,
-                    contentDescription = "删除项目",
+                    contentDescription = "Delete Project",
                     tint = MaterialTheme.colorScheme.error.copy(alpha = 0.7f)
                 )
             }
             
-            // 右侧箭头
+            // Right arrow
             Icon(
                 imageVector = Icons.Default.ChevronRight,
                 contentDescription = null,

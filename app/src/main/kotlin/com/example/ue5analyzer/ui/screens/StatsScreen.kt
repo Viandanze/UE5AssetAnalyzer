@@ -20,7 +20,7 @@ import com.example.ue5analyzer.ui.viewmodel.UiState
 import com.example.ue5analyzer.util.FormatUtils
 
 /**
- * 统计页面 - 显示资源分析统计图表
+ * Statistics Screen - Display asset analysis charts
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -34,7 +34,7 @@ fun StatsScreen(
     
     val analyzer = remember { AssetAnalyzer() }
     val dependencyAnalyzer = remember { DependencyAnalyzer() }
-    // 使用 derivedStateOf 避免在每次重组时重新计算
+    // Use derivedStateOf to avoid recalculating on every recomposition
     val circularDeps by remember(assets) { 
         derivedStateOf { dependencyAnalyzer.findCircularDependencies(assets) } 
     }
@@ -42,13 +42,13 @@ fun StatsScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("统计分析") }
+                title = { Text("Statistics Analysis") }
             )
         }
     ) { padding ->
         when (uiState) {
             is UiState.Idle, is UiState.Scanning -> {
-                // 扫描未开始或进行中
+                // Scanning not started or in progress
                 Box(
                     modifier = Modifier
                         .fillMaxSize()
@@ -66,13 +66,13 @@ fun StatsScreen(
                         )
                         Spacer(modifier = Modifier.height(16.dp))
                         Text(
-                            text = if (uiState is UiState.Scanning) "正在分析..." else "暂无统计数据",
+                            text = if (uiState is UiState.Scanning) "Analyzing..." else "No statistics data yet",
                             style = MaterialTheme.typography.titleMedium,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                         Spacer(modifier = Modifier.height(8.dp))
                         Text(
-                            text = if (uiState is UiState.Scanning) "扫描完成后将自动显示统计信息" else "请先扫描 UE5 项目以查看资源统计",
+                            text = if (uiState is UiState.Scanning) "Statistics will be displayed automatically after scanning" else "Please scan a UE5 project to view asset statistics",
                             style = MaterialTheme.typography.bodyMedium,
                             color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
                         )
@@ -80,7 +80,7 @@ fun StatsScreen(
                 }
             }
             is UiState.Success -> {
-                // 显示统计数据
+                // Display Statistics Data
                 LazyColumn(
                     modifier = modifier
                         .fillMaxSize()
@@ -88,7 +88,7 @@ fun StatsScreen(
                     contentPadding = PaddingValues(16.dp),
                     verticalArrangement = Arrangement.spacedBy(16.dp)
                 ) {
-                    // 项目概况卡片
+                    // Project Overview Card
                     item {
                         ProjectOverviewSection(
                             totalAssets = assets.size,
@@ -97,24 +97,24 @@ fun StatsScreen(
                         )
                     }
                     
-                    // 健康度评分
+                    // Health score
                     item {
                         HealthScoreSection(
                             score = analyzer.calculateHealthScore(assets)
                         )
                     }
                     
-                    // 资源类型分布
+                    // Asset Type Distribution
                     item {
                         AssetTypeDistributionSection(assets = assets)
                     }
                     
-                    // 资源大小TOP10
+                    // Top 10 assets by size
                     item {
                         LargestAssetsSection(assets = assets)
                     }
                     
-                    // 循环依赖检测
+                    // Circular dependencies detection
                     if (circularDeps.isNotEmpty()) {
                         item {
                             CircularDependenciesSection(circularDeps = circularDeps)
@@ -130,7 +130,7 @@ fun StatsScreen(
                     contentAlignment = Alignment.Center
                 ) {
                     Text(
-                        text = "分析失败",
+                        text = "Analysis failed",
                         style = MaterialTheme.typography.bodyLarge,
                         color = MaterialTheme.colorScheme.error
                     )
@@ -148,7 +148,7 @@ private fun ProjectOverviewSection(
 ) {
     Column {
         Text(
-            text = "项目概况",
+            text = "Project Overview",
             style = MaterialTheme.typography.titleMedium,
             modifier = Modifier.padding(bottom = 12.dp)
         )
@@ -158,7 +158,7 @@ private fun ProjectOverviewSection(
             horizontalArrangement = Arrangement.spacedBy(12.dp)
         ) {
             StatCard(
-                title = "总资源数",
+                title = "Total Assets",
                 value = totalAssets.toString(),
                 icon = {
                     Icon(
@@ -171,7 +171,7 @@ private fun ProjectOverviewSection(
             )
             
             StatCard(
-                title = "孤立资源",
+                title = "Orphan Assets",
                 value = orphanCount.toString(),
                 icon = {
                     Icon(
@@ -190,7 +190,7 @@ private fun ProjectOverviewSection(
         Spacer(modifier = Modifier.height(12.dp))
         
         StatCard(
-            title = "项目总大小",
+            title = "Total Project Size",
             value = FormatUtils.formatFileSize(totalSize),
             icon = {
                 Icon(
@@ -216,7 +216,7 @@ private fun HealthScoreSection(score: Int) {
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
             Text(
-                text = "健康度评分",
+                text = "Health Score",
                 style = MaterialTheme.typography.titleMedium,
                 modifier = Modifier.padding(bottom = 16.dp)
             )
@@ -235,9 +235,9 @@ private fun HealthScoreSection(score: Int) {
             
             Text(
                 text = when {
-                    score >= 80 -> "项目状态良好"
-                    score >= 60 -> "存在一些问题"
-                    else -> "需要优化"
+                    score >= 80 -> "Project health is good"
+                    score >= 60 -> "Some issues exist"
+                    else -> "Needs optimization"
                 },
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
@@ -262,7 +262,7 @@ private fun AssetTypeDistributionSection(assets: List<UEAsset>) {
                 .padding(16.dp)
         ) {
             Text(
-                text = "资源类型分布",
+                text = "Asset Type Distribution",
                 style = MaterialTheme.typography.titleMedium,
                 modifier = Modifier.padding(bottom = 16.dp)
             )
@@ -274,7 +274,7 @@ private fun AssetTypeDistributionSection(assets: List<UEAsset>) {
                 )
             } else {
                 Text(
-                    text = "暂无数据",
+                    text = "No data",
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
@@ -298,7 +298,7 @@ private fun LargestAssetsSection(assets: List<UEAsset>) {
                 .padding(16.dp)
         ) {
             Text(
-                text = "资源大小 TOP 10",
+                text = "Assets by Size TOP 10",
                 style = MaterialTheme.typography.titleMedium,
                 modifier = Modifier.padding(bottom = 16.dp)
             )
@@ -311,7 +311,7 @@ private fun LargestAssetsSection(assets: List<UEAsset>) {
                 )
             } else {
                 Text(
-                    text = "暂无数据",
+                    text = "No data",
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
@@ -353,7 +353,7 @@ private fun CircularDependenciesSection(circularDeps: List<List<String>>) {
                 )
                 Spacer(modifier = Modifier.width(8.dp))
                 Text(
-                    text = "循环依赖 (${circularDeps.size})",
+                    text = "Circular Dependencies (${circularDeps.size})",
                     style = MaterialTheme.typography.titleMedium
                 )
             }
@@ -361,7 +361,7 @@ private fun CircularDependenciesSection(circularDeps: List<List<String>>) {
             Spacer(modifier = Modifier.height(8.dp))
             
             Text(
-                text = "以下资源存在循环依赖关系，建议检查是否可以解除",
+                text = "The following assets have circular dependencies. Consider checking if they can be resolved",
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
@@ -373,7 +373,7 @@ private fun CircularDependenciesSection(circularDeps: List<List<String>>) {
                     modifier = Modifier.padding(vertical = 4.dp)
                 ) {
                     Text(
-                        text = "循环 ${index + 1}:",
+                        text = "Cycle ${index + 1}:",
                         style = MaterialTheme.typography.labelMedium,
                         color = MaterialTheme.colorScheme.error
                     )
@@ -400,7 +400,7 @@ private fun CircularDependenciesSection(circularDeps: List<List<String>>) {
             
             if (circularDeps.size > 5) {
                 Text(
-                    text = "... 还有 ${circularDeps.size - 5} 个循环",
+                    text = "... and ${circularDeps.size - 5} more cycles",
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier.padding(top = 8.dp)

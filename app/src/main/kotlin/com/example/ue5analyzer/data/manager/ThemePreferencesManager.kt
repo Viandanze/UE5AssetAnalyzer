@@ -10,17 +10,17 @@ import kotlinx.coroutines.flow.map
 private val Context.themeDataStore: DataStore<Preferences> by preferencesDataStore(name = "theme_preferences")
 
 /**
- * 主题模式
+ * Theme Mode
  */
 enum class ThemeMode {
-    SYSTEM,  // 跟随系统
-    LIGHT,   // 浅色
-    DARK     // 深色
+    SYSTEM,  // Follow System
+    LIGHT,   // Light
+    DARK     // Dark
 }
 
 /**
- * 主题偏好管理器
- * 负责主题偏好的持久化和读取
+ * Theme Preferences Manager
+ * Responsible for theme preference persistence and reading
  */
 class ThemePreferencesManager(private val context: Context) {
     
@@ -29,7 +29,7 @@ class ThemePreferencesManager(private val context: Context) {
     }
     
     /**
-     * 获取主题模式 Flow
+     * Get Theme Mode Flow
      */
     val themeModeFlow: Flow<ThemeMode> = context.themeDataStore.data.map { preferences ->
         val modeName = preferences[THEME_MODE] ?: ThemeMode.SYSTEM.name
@@ -41,7 +41,7 @@ class ThemePreferencesManager(private val context: Context) {
     }
     
     /**
-     * 保存主题模式
+     * Save Theme Mode
      */
     suspend fun saveThemeMode(mode: ThemeMode) {
         context.themeDataStore.edit { preferences ->

@@ -7,7 +7,7 @@ import com.example.ue5analyzer.model.AssetType
 import kotlinx.coroutines.flow.Flow
 
 /**
- * 资源实体
+ * Asset Entity
  */
 @Entity(tableName = "assets")
 data class AssetEntity(
@@ -25,7 +25,7 @@ data class AssetEntity(
 )
 
 /**
- * 项目实体
+ * Project Entity
  */
 @Entity(tableName = "projects")
 data class ProjectEntity(
@@ -38,7 +38,7 @@ data class ProjectEntity(
 )
 
 /**
- * 资源 DAO
+ * Asset DAO
  */
 @Dao
 interface AssetDao {
@@ -62,7 +62,7 @@ interface AssetDao {
 }
 
 /**
- * 项目 DAO
+ * Project DAO
  */
 @Dao
 interface ProjectDao {
@@ -72,7 +72,7 @@ interface ProjectDao {
     @Query("SELECT * FROM projects WHERE id = :id")
     suspend fun getProjectById(id: String): ProjectEntity?
     
-    // 优化：直接通过名称查询，避免加载所有项目后过滤
+    // Optimization: Direct query by name, avoid loading all projects then filtering
     @Query("SELECT * FROM projects WHERE name = :name LIMIT 1")
     suspend fun getProjectByName(name: String): ProjectEntity?
     
@@ -87,7 +87,7 @@ interface ProjectDao {
 }
 
 /**
- * 资源类型统计
+ * Asset Type Statistics
  */
 data class AssetTypeCount(
     val type: String,
@@ -95,7 +95,7 @@ data class AssetTypeCount(
 )
 
 /**
- * 数据库
+ * Database
  */
 @Database(entities = [AssetEntity::class, ProjectEntity::class], version = 1)
 abstract class AppDatabase : RoomDatabase() {
@@ -106,29 +106,29 @@ abstract class AppDatabase : RoomDatabase() {
         @Volatile
         private var INSTANCE: AppDatabase? = null
         
-        // 数据库迁移策略占位
-        // 版本2预留：当前两个表结构保持不变，无需实际迁移
-        // 如后续需要添加字段或修改表结构，在此添加迁移逻辑
+        // Database migration strategy placeholder
+        // Version 2 reserved: Current table structures remain unchanged, no actual migration needed
+        // Add migration logic here if fields need to be added or table structures modified in the future
         val MIGRATION_1_2: Migration = object : Migration(1, 2) {
             override fun migrate(db: SupportSQLiteDatabase) {
-                // 两个表结构与版本1相同，无需迁移
-                // 如需添加新字段，示例：
+                // Both table structures are the same as version 1, no migration needed
+                // Example if adding new field:
                 // db.execSQL("ALTER TABLE assets ADD COLUMN new_field TEXT")
             }
         }
         
         fun getDatabase(context: android.content.Context): AppDatabase {
-            // 双重检查锁定模式（Double-Checked Locking）
-            // 由于 context 参数无法使用 by lazy，此处采用 DCL 模式
-            // INSTANCE 使用 @Volatile 保证可见性
+            // Double-Checked Locking Pattern
+            // Since context parameter cannot use by lazy, DCL pattern is used here
+            // INSTANCE uses @Volatile to guarantee visibility
             return INSTANCE ?: synchronized(this) {
                 val instance = Room.databaseBuilder(
                     context.applicationContext,
                     AppDatabase::class.java,
                     "ue5_analyzer_db"
                 )
-                    .addMigrations(MIGRATION_1_2)  // 添加迁移策略
-                    .fallbackToDestructiveMigration()  // 兜底：没有迁移时重建数据库
+                    .addMigrations(MIGRATION_1_2)  // Add Migration Strategy
+                    .fallbackToDestructiveMigration()  // Fallback: Rebuild database when no migration exists
                     .build()
                 INSTANCE = instance
                 instance

@@ -32,7 +32,7 @@ import com.example.ue5analyzer.ui.viewmodel.UiState
 import kotlinx.coroutines.launch
 
 /**
- * 报告页面 - 预览和导出报告
+ * Report Screen - Preview and export reports
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -46,13 +46,13 @@ fun ReportScreen(
     
     val reportGenerator = remember { ReportGenerator(context) }
     
-    // Snackbar 状态
+    // Snackbar State
     val snackbarHostState = remember { SnackbarHostState() }
     
-    // 协程作用域
+    // Coroutine Scope
     val scope = rememberCoroutineScope()
     
-    // 报告导出
+    // Report export
     val reportSaver = rememberLauncherForActivityResult(
         ActivityResultContracts.CreateDocument("text/markdown")
     ) { uri: Uri? ->
@@ -61,12 +61,12 @@ fun ReportScreen(
             scope.launch {
                 if (success) {
                     snackbarHostState.showSnackbar(
-                        message = "报告已导出",
+                        message = "Report exported",
                         duration = SnackbarDuration.Short
                     )
                 } else {
                     snackbarHostState.showSnackbar(
-                        message = "导出失败",
+                        message = "Export failed",
                         duration = SnackbarDuration.Short
                     )
                 }
@@ -77,7 +77,7 @@ fun ReportScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("分析报告") },
+                title = { Text("Analysis Report") },
                 actions = {
                     if (currentReport != null) {
                         IconButton(
@@ -85,7 +85,7 @@ fun ReportScreen(
                                 reportSaver.launch("report_${System.currentTimeMillis()}.md") 
                             }
                         ) {
-                            Icon(Icons.Default.Download, "导出报告")
+                            Icon(Icons.Default.Download, "Export Report")
                         }
                         IconButton(
                             onClick = {
@@ -95,7 +95,7 @@ fun ReportScreen(
                                 }
                             }
                         ) {
-                            Icon(Icons.Default.Share, "分享报告")
+                            Icon(Icons.Default.Share, "Share Report")
                         }
                     }
                 }
@@ -122,13 +122,13 @@ fun ReportScreen(
                         )
                         Spacer(modifier = Modifier.height(16.dp))
                         Text(
-                            text = if (uiState is UiState.Scanning) "正在生成报告..." else "暂无分析报告",
+                            text = if (uiState is UiState.Scanning) "Generating report..." else "No analysis report yet",
                             style = MaterialTheme.typography.titleMedium,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                         Spacer(modifier = Modifier.height(8.dp))
                         Text(
-                            text = if (uiState is UiState.Scanning) "扫描完成后将自动生成报告" else "请先扫描 UE5 项目以生成资源分析报告",
+                            text = if (uiState is UiState.Scanning) "Report will be generated automatically after scanning" else "Please scan a UE5 project to generate an asset analysis report",
                             style = MaterialTheme.typography.bodyMedium,
                             color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
                         )
@@ -149,7 +149,7 @@ fun ReportScreen(
                         contentAlignment = Alignment.Center
                     ) {
                         Text(
-                            text = "暂无报告",
+                            text = "No report available",
                             style = MaterialTheme.typography.bodyLarge,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
@@ -174,7 +174,7 @@ fun ReportScreen(
                         )
                         Spacer(modifier = Modifier.height(16.dp))
                         Text(
-                            text = "生成报告失败",
+                            text = "Failed to generate report",
                             style = MaterialTheme.typography.bodyLarge,
                             color = MaterialTheme.colorScheme.error
                         )
@@ -193,7 +193,7 @@ private fun ReportContent(
     Column(
         modifier = modifier.fillMaxSize()
     ) {
-        // 工具栏
+        // Toolbar
         Row(
             modifier = Modifier
                 .fillMaxWidth()
@@ -201,7 +201,7 @@ private fun ReportContent(
             horizontalArrangement = Arrangement.spacedBy(8.dp)
         ) {
             Text(
-                text = "Markdown 格式预览",
+                text = "Markdown Format Preview",
                 style = MaterialTheme.typography.labelMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier.weight(1f)
@@ -210,7 +210,7 @@ private fun ReportContent(
         
         Divider()
         
-        // Markdown 内容
+        // Markdown content
         EnhancedMarkdownContent(
             content = reportContent,
             modifier = Modifier.weight(1f)
@@ -219,7 +219,7 @@ private fun ReportContent(
 }
 
 /**
- * 增强的 Markdown 内容渲染器
+ * Enhanced Markdown content renderer
  */
 @Composable
 private fun EnhancedMarkdownContent(
@@ -241,7 +241,7 @@ private fun EnhancedMarkdownContent(
             state = rememberLazyListState(),
             verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
-            // 解析并渲染 Markdown
+            // Parse and render Markdown
             val parsedContent = parseEnhancedMarkdownContent(content)
             
             items(parsedContent) { element ->
@@ -252,7 +252,7 @@ private fun EnhancedMarkdownContent(
 }
 
 /**
- * Markdown 元素 - 增强版
+ * Markdown element - Enhanced version
  */
 sealed class MarkdownElement {
     data class Heading(val level: Int, val text: String) : MarkdownElement()
@@ -266,8 +266,8 @@ sealed class MarkdownElement {
 }
 
 /**
- * 解析 Markdown 内容为元素列表 - 增强版
- * 支持：代码块、嵌套列表、加粗+斜体、链接
+ * Parse Markdown content to element list - Enhanced version
+ * Supports: code blocks, nested lists, bold+italic, links
  */
 private fun parseEnhancedMarkdownContent(content: String): List<MarkdownElement> {
     val elements = mutableListOf<MarkdownElement>()
@@ -278,7 +278,7 @@ private fun parseEnhancedMarkdownContent(content: String): List<MarkdownElement>
         val line = lines[i]
         
         when {
-            // 代码块开始
+            // Code block start
             line.trim().startsWith("```") -> {
                 val language = line.trim().removePrefix("```")
                 val codeLines = mutableListOf<String>()
@@ -290,7 +290,7 @@ private fun parseEnhancedMarkdownContent(content: String): List<MarkdownElement>
                 elements.add(MarkdownElement.CodeBlock(codeLines.joinToString("\n"), language))
             }
             
-            // 标题
+            // Heading
             line.startsWith("# ") -> {
                 elements.add(MarkdownElement.Heading(1, line.removePrefix("# ")))
             }
@@ -304,22 +304,22 @@ private fun parseEnhancedMarkdownContent(content: String): List<MarkdownElement>
                 elements.add(MarkdownElement.Heading(4, line.removePrefix("#### ")))
             }
             
-            // 分隔线
+            // Horizontal rule
             line.startsWith("---") || line.startsWith("***") || line.startsWith("___") -> {
                 elements.add(MarkdownElement.HorizontalRule())
             }
             
-            // 表格 - 检测连续的 | 行
+            // Table - detect consecutive | lines
             line.trim().startsWith("|") -> {
                 val tableLines = mutableListOf<String>()
                 while (i < lines.size && lines[i].trim().startsWith("|")) {
-                    // 跳过分隔行 (|---|)
+                    // Skip separator lines (|---|)
                     if (!lines[i].contains("---")) {
                         tableLines.add(lines[i])
                     }
                     i++
                 }
-                i-- // 回退一行
+                i-- // Go back one line
                 
                 if (tableLines.size >= 2) {
                     val table = parseTable(tableLines)
@@ -329,14 +329,14 @@ private fun parseEnhancedMarkdownContent(content: String): List<MarkdownElement>
                 }
             }
             
-            // 引用
+            // Blockquote
             line.startsWith("> ") -> {
                 elements.add(MarkdownElement.Blockquote(line.removePrefix("> ")))
             }
             
-            // 嵌套列表 - 检测缩进的列表项
+            // Nested list - detect indented list items
             line.startsWith("  - ") || line.startsWith("\t- ") -> {
-                // 计算缩进级别
+                // Calculate indentation level
                 val indent = when {
                     line.startsWith("  - ") -> 2
                     line.startsWith("\t- ") -> 1
@@ -346,7 +346,7 @@ private fun parseEnhancedMarkdownContent(content: String): List<MarkdownElement>
                 val nestedItems = mutableListOf<String>()
                 nestedItems.add(itemText)
                 
-                // 继续收集同级别的嵌套项
+                // Continue collecting same-level nested items
                 while (i + 1 < lines.size) {
                     val nextLine = lines[i + 1]
                     val nextIndent = when {
@@ -374,24 +374,24 @@ private fun parseEnhancedMarkdownContent(content: String): List<MarkdownElement>
                 }
             }
             
-            // 普通列表项
+            // Regular list item
             line.startsWith("- ") -> {
                 val listItems = mutableListOf<String>()
                 while (i < lines.size && lines[i].startsWith("- ")) {
                     listItems.add(lines[i].removePrefix("- "))
                     i++
                 }
-                i-- // 回退
+                i-- // Go back
                 elements.add(MarkdownElement.UnorderedList(listItems))
             }
             
-            // 段落（包含内联样式的文本）
+            // Paragraph (text with inline styles)
             line.isNotBlank() -> {
                 elements.add(MarkdownElement.Paragraph(line, inlineStyles = true))
             }
             
             else -> {
-                // 空行，忽略
+                // Empty line, skip
             }
         }
         i++
@@ -401,7 +401,7 @@ private fun parseEnhancedMarkdownContent(content: String): List<MarkdownElement>
 }
 
 /**
- * 解析表格
+ * Parse table
  */
 private fun parseTable(lines: List<String>): MarkdownElement.Table? {
     return try {
@@ -416,7 +416,7 @@ private fun parseTable(lines: List<String>): MarkdownElement.Table? {
 }
 
 /**
- * 渲染增强的 Markdown 元素
+ * Render enhanced Markdown element
  */
 @Composable
 private fun RenderEnhancedMarkdownElement(element: MarkdownElement) {
@@ -535,7 +535,7 @@ private fun RenderEnhancedMarkdownElement(element: MarkdownElement) {
 }
 
 /**
- * 解析内联样式（加粗、斜体、链接）
+ * Parse inline styles (bold, italic, links)
  */
 @Composable
 private fun parseInlineStyles(text: String): androidx.compose.ui.text.AnnotatedString {
@@ -548,25 +548,25 @@ private fun parseInlineStyles(text: String): androidx.compose.ui.text.AnnotatedS
         val boldItalicPattern = Regex("\\*\\*(.+?)\\*\\*")
         val linkPattern = Regex("\\[([^]]+)]\\(([^)]+)\\)")
         
-        // 找到所有样式位置
+        // Find all style positions
         val matches = mutableListOf<Pair<Int, MatchResult>>()
         
         boldPattern.findAll(text).forEach { matches.add(it.range.first to it) }
         italicPattern.findAll(text).forEach { matches.add(it.range.first to it) }
         linkPattern.findAll(text).forEach { matches.add(it.range.first to it) }
         
-        // 按位置排序
+        // Sort by position
         matches.sortBy { it.first }
         
         var processedEnd = 0
         matches.forEach { (start, match) ->
-            // 添加普通文本
+            // Add plain text
             if (start > processedEnd) {
                 append(text.substring(processedEnd, start))
             }
             
             when {
-                // 加粗
+                // Bold
                 text.substring(start).startsWith("**") -> {
                     val endIndex = text.indexOf("**", start + 2)
                     if (endIndex > start) {
@@ -579,7 +579,7 @@ private fun parseInlineStyles(text: String): androidx.compose.ui.text.AnnotatedS
                         processedEnd = start + 1
                     }
                 }
-                // 链接
+                // Link
                 match.value.matches(linkPattern) -> {
                     val linkMatch = linkPattern.find(match.value)
                     if (linkMatch != null) {
@@ -597,7 +597,7 @@ private fun parseInlineStyles(text: String): androidx.compose.ui.text.AnnotatedS
                         processedEnd = start + 1
                     }
                 }
-                // 斜体
+                // Italic
                 text[start] == '*' -> {
                     val endIndex = text.indexOf('*', start + 1)
                     if (endIndex > start && text.getOrNull(endIndex + 1) != '*') {
@@ -617,7 +617,7 @@ private fun parseInlineStyles(text: String): androidx.compose.ui.text.AnnotatedS
             }
         }
         
-        // 添加剩余文本
+        // Add remaining text
         if (processedEnd < text.length) {
             append(text.substring(processedEnd))
         }
@@ -625,7 +625,7 @@ private fun parseInlineStyles(text: String): androidx.compose.ui.text.AnnotatedS
 }
 
 /**
- * 代码块卡片
+ * Code block card
  */
 @Composable
 private fun CodeBlockCard(code: String, language: String) {
@@ -660,7 +660,7 @@ private fun CodeBlockCard(code: String, language: String) {
 }
 
 /**
- * Markdown 表格
+ * Markdown table
  */
 @Composable
 private fun MarkdownTable(headers: List<String>, rows: List<List<String>>) {
@@ -673,7 +673,7 @@ private fun MarkdownTable(headers: List<String>, rows: List<List<String>>) {
         Column(
             modifier = Modifier.padding(8.dp)
         ) {
-            // 表头
+            // Table header
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceEvenly
@@ -691,7 +691,7 @@ private fun MarkdownTable(headers: List<String>, rows: List<List<String>>) {
             
             Divider(modifier = Modifier.padding(vertical = 4.dp))
             
-            // 数据行
+            // Data rows
             rows.forEach { row ->
                 Row(
                     modifier = Modifier

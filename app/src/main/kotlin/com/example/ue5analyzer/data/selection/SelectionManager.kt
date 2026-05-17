@@ -1,25 +1,25 @@
 package com.example.ue5analyzer.data.selection
 
 /**
- * 选择管理器
- * 负责资产的多选逻辑
+ * Selection Manager
+ * Responsible for asset multi-selection logic
  */
 class SelectionManager {
     
     private val selectedIds = mutableSetOf<String>()
     
     /**
-     * 获取已选择的ID列表
+     * Get Selected ID List
      */
     fun getSelectedIds(): List<String> = selectedIds.toList()
     
     /**
-     * 检查是否已选择
+     * Check if Selected
      */
     fun isSelected(id: String): Boolean = selectedIds.contains(id)
     
     /**
-     * 切换选择状态
+     * Toggle Selection State
      */
     fun toggle(id: String) {
         if (selectedIds.contains(id)) {
@@ -30,7 +30,7 @@ class SelectionManager {
     }
     
     /**
-     * 全选
+     * Select All
      */
     fun selectAll(ids: List<String>) {
         selectedIds.clear()
@@ -38,19 +38,19 @@ class SelectionManager {
     }
     
     /**
-     * 清空所有选择
+     * Clear All Selection
      */
     fun clear() {
         selectedIds.clear()
     }
     
     /**
-     * 选择数量
+     * Selection Count
      */
     fun count(): Int = selectedIds.size
     
     /**
-     * 是否为空
+     * Is Empty
      */
     fun isEmpty(): Boolean = selectedIds.isEmpty()
 }
