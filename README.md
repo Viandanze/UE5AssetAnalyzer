@@ -1,10 +1,6 @@
 # UE5 Asset Analyzer
 
-An Android tool for scanning and analyzing Unreal Engine 5 project assets. Parses `.uasset` files,
-detects orphaned resources, maps dependency chains, and calculates project health scores.
-
-Built because UE5 projects get messy fast — orphaned assets, circular dependencies, bloated content
-directories — manual cleanup is impractical. This automates it.
+An Android application for scanning and analyzing Unreal Engine 5 project assets. Parses `.uasset` binary file headers, detects orphaned resources, maps dependency chains, generates health scores, previews 3D models, and exports PDF reports.
 
 ## Requirements
 
@@ -14,28 +10,23 @@ directories — manual cleanup is impractical. This automates it.
 
 ## Download
 
-- **APK**: [app-debug.apk](apk/app-debug.apk)
-  or [GitHub Release](https://github.com/Viandanze/UE5AssetAnalyzer/releases/tag/v1.0-release)
+- **APK**: [GitHub Release](https://github.com/Viandanze/UE5AssetAnalyzer/releases/tag/v1.0-release)
 
 ## Features
 
-- **Project Scanning**: Scan UE5 project directories, parse `.uasset` file headers for metadata
-- **Asset Classification**: 16 asset types (Blueprint, Static Mesh, Material, Texture, Sound, Level,
-  etc.)
-- **Orphan Detection**: Flag zero-reference and single-reference assets with risk levels (High /
-  Medium / Low)
-- **Dependency Analysis**: Who depends on whom, how deep the chain goes
-- **Circular Dependency Detection**: Find mutually referencing loops
-- **Project Health Score**: Composite metric from orphan rate, circular deps, reference depth, and
-  more
-- **3D Model Preview**: Import and preview `.obj` files with Three.js (WebGL), supports orbit
-  controls and wireframe toggle
-- **Scan History & Compare**: Persisted locally via Room, compare two scans to track
-  added/removed/modified assets over time
+- **Project Scanning**: Scan UE5 project directories via SAF, parse `.uasset` file headers for metadata (supports 3 header variants)
+- **Asset Classification**: 16+ asset types recognized — Blueprint, Static Mesh, Material, Texture, Sound, Level, and more
+- **Orphan Detection**: Flag zero-reference and single-reference assets with risk levels (High / Medium / Low), with protected-type awareness
+- **Dependency Analysis**: Full dependency chain mapping — who depends on whom, how deep it goes
+- **Circular Dependency Detection**: Find mutually referencing loops automatically
+- **Project Health Score**: Composite 100-point metric from 5 dimensions — orphan rate, circular deps, reference depth, asset distribution, and redundancy
+- **3D Model Preview**: Import and preview `.obj` files with Three.js (WebGL) via WebView + JavascriptInterface bridge, supports orbit controls, zoom, and wireframe toggle
+- **Scan History & Compare**: Persisted locally via Room database, compare two scans to track added/removed/modified assets with diff highlighting
+- **PDF Report Export**: Generate and export A4-formatted PDF analysis reports (native Android PdfDocument API, no third-party dependencies)
+- **Markdown Report**: Generate Markdown-formatted analysis reports with health scores and recommendations
 - **Batch Selection & Export**: Multi-select assets and export as Markdown
 - **Scan Settings**: Configure ignored directories, extensions, and file size limits
-- **Theme Support**: System / Light / Dark mode, persisted preference
-- **Report Generation**: Markdown reports with health scores, asset breakdown, and recommendations
+- **Theme Support**: System / Light / Dark mode, persisted via DataStore
 
 ## Screenshots
 
@@ -47,35 +38,44 @@ directories — manual cleanup is impractical. This automates it.
 
 - **Language**: Kotlin
 - **UI**: Jetpack Compose + Material3
-- **Architecture**: MVVM (data / domain / UI layers)
-- **Database**: Room
+- **Architecture**: MVVM + Clean Architecture (data / domain / UI layers)
+- **Database**: Room with migration support
 - **Async**: Coroutines + Flow
 - **Navigation**: Navigation Compose
 - **Config**: DataStore
-- **3D Preview**: Three.js + WebView (OBJLoader via JavascriptInterface bridge)
-- **Network**: Ktor + Retrofit (for future cloud sync)
+- **3D Preview**: Three.js + WebView (OBJLoader via `addJavascriptInterface` bridge)
+- **PDF Export**: Native Android PdfDocument API
+- **Network**: Retrofit (for future cloud sync)
+- **Security**: Network security config, WebView cross-origin disabled, ProGuard code obfuscation
 
 ## Project Structure
 
 ```
-app/src/main/kotlin/com/example/ue5analyzer/
-├── data/
-│   ├── database/        # Room database, entities, DAOs
-│   ├── filter/          # Asset filtering logic
-│   ├── manager/         # ScanConfigManager, ThemePreferencesManager
-│   ├── parser/          # .uasset binary parser, UE project scanner
-│   ├── repository/      # Asset & project repositories
-│   └── selection/       # Batch selection state management
-├── domain/
-│   ├── analyzer/        # Dependency analysis, health scoring, orphan detection
-│   └── report/          # Markdown & PDF report generation
-├── model/               # Data classes, enums, ScanConfig
-└── ui/
-    ├── components/      # Reusable chart components (pie, bar, ring progress)
-    ├── navigation/      # Navigation route definitions
-    ├── screens/         # Screen composables (Scan, Detail, History, OBJ Preview, etc.)
-    ├── theme/           # Material3 theme configuration
-    └── viewmodel/       # ViewModel + StateFlow
+app/src/main/
+├── assets/
+│   ├── js/                        # Three.js, OrbitControls, OBJLoader (local, no CDN)
+│   └── obj_viewer.html            # 3D preview page
+├── kotlin/com/example/ue5analyzer/
+│   ├── MainActivity.kt            # Entry point
+│   ├── data/
+│   │   ├── database/              # Room database, ScanHistoryEntity, DAOs
+│   │   ├── filter/                # Asset filtering logic
+│   │   ├── manager/               # ScanConfigManager, ThemePreferencesManager
+│   │   ├── parser/                # .uasset binary parser, UE project scanner
+│   │   ├── repository/            # Asset & project repositories
+│   │   └── selection/             # Batch selection state management
+│   ├── domain/
+│   │   ├── analyzer/              # AdvancedAssetAnalyzer, dependency analysis, orphan detection
+│   │   └── report/                # PdfExporter, ReportGenerator
+│   ├── model/                     # Data classes, enums, ScanConfig
+│   ├── ui/
+│   │   ├── components/            # Charts, DependencyGraph
+│   │   ├── navigation/            # Navigation route definitions
+│   │   ├── screens/               # Scan, Detail, History, OBJ Preview, Report, Stats, ProjectList
+│   │   ├── theme/                 # Material3 theme configuration
+│   │   └── viewmodel/             # MainViewModel + StateFlow
+│   └── util/                      # FormatUtils
+└── res/                           # Drawable, mipmap, values, xml configs
 ```
 
 ## Getting Started
@@ -108,8 +108,7 @@ Accessible from the **⋮** menu on the scan screen:
 
 ### SAF Permissions
 
-The app uses Android's Storage Access Framework (SAF) to access project directories. Permissions are
-automatically managed — previous folder permissions are released when scanning a new folder.
+The app uses Android's Storage Access Framework (SAF) to access project directories. Permissions are automatically managed — previous folder permissions are released when scanning a new folder.
 
 ## Demo Video
 
