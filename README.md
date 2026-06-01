@@ -110,10 +110,6 @@ Accessible from the **⋮** menu on the scan screen:
 
 The app uses Android's Storage Access Framework (SAF) to access project directories. Permissions are automatically managed — previous folder permissions are released when scanning a new folder.
 
-## Demo Video
-
-[Demo Video (2 min)](https://www.bilibili.com/) <!-- Replace with actual link -->
-
 ## License
 
 MIT
