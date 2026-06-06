@@ -28,12 +28,6 @@ An Android application for scanning and analyzing Unreal Engine 5 project assets
 - **Scan Settings**: Configure ignored directories, extensions, and file size limits
 - **Theme Support**: System / Light / Dark mode, persisted via DataStore
 
-## Screenshots
-
-| Scan Screen                              | Asset Detail                                | 3D Preview                            | Scan History                                 |
-|------------------------------------------|---------------------------------------------|---------------------------------------|----------------------------------------------|
-| ![Scan Screen](docs/screenshot_scan.png) | ![Asset Detail](docs/screenshot_detail.png) | ![3D Preview](docs/screenshot_3d.png) | ![Scan History](docs/screenshot_history.png) |
-
 ## Tech Stack
 
 - **Language**: Kotlin
