@@ -8,10 +8,6 @@ An Android application for scanning and analyzing Unreal Engine 5 project assets
 - **Target Android version**: 14 (API 34)
 - A UE5 project directory to scan
 
-## Download
-
-- **APK**: [GitHub Release](https://github.com/Viandanze/UE5AssetAnalyzer/releases/tag/v1.0-release)
-
 ## Features
 
 - **Project Scanning**: Scan UE5 project directories via SAF, parse `.uasset` file headers for metadata (supports 3 header variants)
