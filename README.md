@@ -1,6 +1,6 @@
 # UE5 Asset Analyzer
 
-An Android application for scanning and analyzing Unreal Engine 5 project assets. Parses `.uasset` binary file headers, detects orphaned resources, maps dependency chains, generates health scores, previews 3D models, and exports PDF reports.
+An Android application for scanning and analyzing Unreal Engine 5 project assets. Parses `.uasset` / `.umap` binary file headers, detects orphaned resources, maps dependency chains, generates health scores, previews 3D models, and exports PDF reports.
 
 ## Requirements
 
@@ -8,9 +8,11 @@ An Android application for scanning and analyzing Unreal Engine 5 project assets
 - **Target Android version**: 14 (API 34)
 - A UE5 project directory to scan
 
+**Status: v1.0 release (feature-complete).** See [ARCHITECTURE.md](ARCHITECTURE.md) for the full MVVM layer breakdown.
+
 ## Features
 
-- **Project Scanning**: Scan UE5 project directories via SAF, parse `.uasset` file headers for metadata (supports 3 header variants)
+- **Project Scanning**: Scan UE5 project directories via SAF, parse `.uasset` / `.umap` file headers for metadata (3 header variants; `.umap` classified as level assets)
 - **Asset Classification**: 16+ asset types recognized — Blueprint, Static Mesh, Material, Texture, Sound, Level, and more
 - **Orphan Detection**: Flag zero-reference and single-reference assets with risk levels (High / Medium / Low), with protected-type awareness
 - **Dependency Analysis**: Full dependency chain mapping — who depends on whom, how deep it goes
